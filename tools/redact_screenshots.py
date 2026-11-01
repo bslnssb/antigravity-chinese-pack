@@ -12,6 +12,10 @@
 
 用法：
     python tools/redact_screenshots.py
+
+注意：build/_shots/ 里的原始截图**已于 2026-11-02 删除**（含明文 Gmail，只保留打码版）。
+  现在重跑会全部 [SKIP]。要用它，得先按 2100x1353（2x DPR）重新截图放到 build/_shots/，
+  并重新核对下面 REGIONS 的坐标——尺寸或界面布局变了，坐标就全部作废。
 """
 from pathlib import Path
 

@@ -22,7 +22,10 @@
   报 `ReferenceError`。现在替换只发生在字符串字面量内部，并在打包前断言"代码区不允许出现中文"
 - 登录页补译 3 条 2.28 新增文案：「欢迎使用 Antigravity」「使用 Google 账号继续」「登录遇到问题？」
 - 翻译字典 842 → **1283 条**（并入渲染层完整词库）
-- **新增 `一键安装汉化.bat`**：自动定位安装目录、读取已装版本、挑选对应补丁、首次运行自动备份
+- **新增 `一键安装汉化.bat`**：自动定位安装目录、读取已装版本、挑选对应补丁、首次运行自动备份。
+  定位顺序为 `%LOCALAPPDATA%\Programs\Antigravity` → `%PROGRAMFILES%` → `%PROGRAMFILES(X86)%`，
+  三处都没有时再查注册表 Uninstall 项反推——**改过安装目录（如装到 `D:\Apps\Antigravity`）也能识别**。
+  补丁文件夹本身放在哪都行，不必与客户端同目录
 - **新增 `tools/port_to.py`**：官方出新版后一条命令即可自助移植，不需要 Node.js
 - **新增 `关闭自动更新.bat` / `恢复自动更新.bat`**：逆清官方更新链路后找到官方自带的
   `autoCheckForUpdates` 开关（存 `%APPDATA%\Antigravity\app_storage.json`），置 false 后

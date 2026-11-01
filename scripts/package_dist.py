@@ -27,6 +27,7 @@ PAYLOAD_FILES = [
     "恢复自动更新.bat",
     "一键恢复官方英文.bat",
     "tools/auto-update-toggle.ps1",
+    "tools/find-install-dir.ps1",
 ]
 
 

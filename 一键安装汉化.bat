@@ -21,10 +21,21 @@ set "RT="
 for %%P in ("%LOCALAPPDATA%\Programs\Antigravity\resources" "%PROGRAMFILES%\Antigravity\resources" "%PROGRAMFILES(X86)%\Antigravity\resources") do (
     if exist "%%~P\app.asar" if not defined RT set "RT=%%~P"
 )
+rem ---- 1b. fall back to the install path recorded in the registry ----
+rem     covers custom install dirs (D:\Apps\Antigravity etc.) where the
+rem     three standard locations above do not exist
+if not defined RT (
+    if exist "%HERE%\tools\find-install-dir.ps1" (
+        for /f "usebackq delims=" %%P in (`powershell -NoProfile -ExecutionPolicy Bypass -File "%HERE%\tools\find-install-dir.ps1"`) do set "RT=%%P"
+    )
+)
+if defined RT if not exist "%RT%\app.asar" set "RT="
+
 if not defined RT (
     echo  [ERROR] Antigravity not found. Looked in:
     echo          %%LOCALAPPDATA%%\Programs\Antigravity\resources
     echo          %%PROGRAMFILES%%\Antigravity\resources
+    echo          the install path recorded in the registry
     echo  Install Antigravity first.
     echo.
     pause
