@@ -35,6 +35,8 @@ build/swap-map.json
 build/_shots/
 build/_cmp/
 build/_test_port.asar
+# 重写历史前的仓库备份（含旧截图，绝不入库）
+build/_backup/
 # 2.27 是自动更新踩坑时的中间版本，成品已由 2.28.2 取代
 build/work-2.27/
 build/work-2.28.2/tmp/
