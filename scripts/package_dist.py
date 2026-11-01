@@ -23,11 +23,13 @@ ROOT = Path(__file__).resolve().parent.parent
 
 PAYLOAD_FILES = [
     "一键安装汉化.bat",
+    "一键恢复官方英文.bat",
     "关闭自动更新.bat",
     "恢复自动更新.bat",
-    "一键恢复官方英文.bat",
+    "启动反重力.vbs",
     "tools/auto-update-toggle.ps1",
     "tools/find-install-dir.ps1",
+    "tools/make-shortcut.ps1",
 ]
 
 

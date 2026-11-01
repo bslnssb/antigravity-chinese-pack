@@ -102,7 +102,14 @@ if errorlevel 1 (
 
 echo  [OK] Chinese pack applied for version %IVER%.
 echo.
-echo  Start Antigravity. The first screen takes 30-60 seconds to hydrate
+rem ---- 6. desktop shortcut (best-effort) ----
+if exist "%HERE%\启动反重力.vbs" (
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%HERE%\tools\make-shortcut.ps1" -VbsPath "%HERE%\启动反重力.vbs" -ExePath "%RT%\..\Antigravity.exe"
+    echo.
+)
+echo  Start Antigravity from the desktop shortcut (反重力（中文版）)
+echo  or by double-clicking 启动反重力.vbs in this folder.
+echo  The first screen takes 30-60 seconds to hydrate
 echo  before Chinese text appears - that is normal, do not judge too early.
 echo.
 echo  ------------------------------------------------------------
