@@ -1,6 +1,8 @@
-# Antigravity 中文汉化包
+# Antigravity（反重力）中文汉化包
 
-> Google Antigravity 桌面客户端的简体中文汉化。**不降级、可校验、一键回滚、跟随版本升级。**
+> Google Antigravity（中文社区常称「反重力」）桌面客户端的简体中文汉化补丁。**不降级、可校验、一键回滚、跟随版本升级。**
+>
+> 关键词：反重力汉化 · Antigravity 汉化 · Antigravity 中文 · 界面汉化 · 中文补丁 · Chinese localization pack
 
 当前支持：**v2.26.0**（v2.25.1 保留兼容，见 [版本动态](#版本动态)）
 
