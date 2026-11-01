@@ -1,0 +1,12 @@
+# 一律不做换行符转换：换装用的 js 必须与构建时字节完全一致，
+# 否则重打包后 integrity 哈希对不上（Windows 上 CRLF 转换是常见坑）
+* -text
+
+# 文档按 LF 存
+*.md text eol=lf
+
+# 二进制文件
+*.asar binary
+*.zip binary
+*.png binary
+*.jpg binary

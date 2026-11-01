@@ -1,0 +1,7 @@
+{
+  "dist/preload.js": "build/materials-2.25/dist__preload.js",
+  "dist/menu.js": "build/materials-2.25/dist__menu.js",
+  "dist/tray.js": "build/materials-2.25/dist__tray.js",
+  "dist/ideInstall/wizardHtml.js": "build/materials-2.25/dist__ideInstall__wizardHtml.js",
+  "dist/main.js": "build/materials-2.25/main25-zh.js"
+}

@@ -1,0 +1,26 @@
+Antigravity 中文汉化包 v2.26.0 安装说明
+==========================================
+
+适用版本：Antigravity v2.26.0（设置-关于里查看；2026-10-22 官方发布）
+
+安装（1 分钟）：
+1. 完全退出 Antigravity（托盘图标也右键退出）
+2. 打开安装目录：%LOCALAPPDATA%\Programs\Antigravity\resources\
+3. 把官方 app.asar 改名为 app.asar.bak （回滚保险，别跳过）
+4. 把本包的 app.asar.zh-2.26.0 复制进去，改名为 app.asar
+5. 启动 Antigravity，界面即为中文
+   （注：启动后界面水合约需 30-60 秒，稍等片刻中文全部出现）
+
+回滚（恢复官方英文）：
+- 双击本包里的 一键恢复官方英文.bat
+- 或手动：删 app.asar，把 app.asar.bak 改回 app.asar
+
+本包特点：
+- 以你本机官方 v2.26.0 app.asar 结构为基准构建，只换 6 个界面文件，全部通过
+  Electron integrity 完整性哈希校验（纯 Python 维护器 zh_merge.py 含校验工具）
+- 界面翻译字典与 v2.25.1 相同（842 条），渲染层资源官方未变，翻译全覆盖
+- 相比 v2.25.1 新补 12 处历史缺口文案（WSL/启动失败对话框、打开工作区等）
+- 2.26 新增的 executeJavaScriptInIsolatedWorld 桥接 API 已同步进汉化 preload
+- 想跟进新版本？维护器 zh_merge.py 纯 Python 可把翻译自动搬到新版
+
+问题反馈：GitHub Issues

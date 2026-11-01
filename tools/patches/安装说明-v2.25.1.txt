@@ -1,0 +1,23 @@
+Antigravity 中文汉化包 v2.25.1 安装说明
+==========================================
+
+适用版本：Antigravity v2.25.0（设置-关于里查看。若你已被升级到 2.26，请先不要安装）
+
+安装（1 分钟）：
+1. 完全退出 Antigravity（托盘图标也右键退出）
+2. 打开安装目录：%LOCALAPPDATA%\Programs\Antigravity\resources\
+3. 把官方 app.asar 改名为 app.asar.bak （回滚保险，别跳过）
+4. 把本包的 app.asar.zh-2.25.1 复制进去，改名为 app.asar
+5. 启动 Antigravity，界面即为中文
+
+回滚（恢复官方英文）：
+- 双击本包里的 一键恢复官方英文.bat
+- 或手动：删 app.asar，把 app.asar.bak 改回 app.asar
+
+本包特点：
+- 以你本机官方 app.asar 结构为基准构建，只换 5 个界面文件，全部通过 Electron
+  integrity 完整性哈希校验（tools 内含校验工具）
+- 界面翻译字典 842 条
+- 想抢先体验新版本？仓库 tools/ 带纯 Python 维护器，可把翻译自动搬到新版
+
+问题反馈：GitHub Issues

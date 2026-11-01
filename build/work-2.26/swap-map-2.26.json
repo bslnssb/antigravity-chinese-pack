@@ -1,0 +1,8 @@
+{
+ "dist/menu.js": "build/work-2.26/zh26/dist_menu.js",
+ "dist/main.js": "build/work-2.26/zh26/dist_main.js",
+ "dist/ipcHandlers.js": "build/work-2.26/zh26/dist_ipcHandlers.js",
+ "dist/tray.js": "build/work-2.26/zh26/dist_tray.js",
+ "dist/preload.js": "build/work-2.26/zh26/dist_preload.js",
+ "dist/ideInstall/wizardHtml.js": "build/work-2.26/zh26/dist_ideInstall_wizardHtml.js"
+}

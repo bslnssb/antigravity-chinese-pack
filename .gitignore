@@ -1,0 +1,32 @@
+# ============ 临时 / 环境 ============
+__pycache__/
+*.pyc
+.workbuddy/
+_st_*.js
+_st_*.json
+
+# ============ 不发布的二进制（走 GitHub Releases）============
+# 官方 app.asar 与汉化成品 asar 均属 Google 的二进制，不放进仓库
+*.asar
+*.asar.*
+build/*.asar*
+packs/*.zip
+# 重打包前的旧 zip 留档
+build/_old-packs/
+
+# 本机专用启动器（写死 Clash 端口 7897、个人使用习惯），不公开
+start-antigravity-proxy.cmd
+
+# ============ 内部资料：战役流水账 / 交接文档 ============
+# 含本机路径、其他私人项目、代理与额度记录，不公开
+autonomous-20261024/
+交接文档.md
+
+# ============ 构建中间产物（从官方 asar 提取出来的代码）============
+build/work-2.26/n26/
+build/work-2.26/o25/
+build/work-2.26/z251/
+build/work-2.26/chk/
+build/work-2.26/memory-*.json
+# 写死过绝对路径的旧映射，已被 tools/patches/swap-map.relative.json 取代
+build/swap-map.json
