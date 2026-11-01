@@ -94,6 +94,13 @@ echo.
 echo  Start Antigravity. The first screen takes 30-60 seconds to hydrate
 echo  before Chinese text appears - that is normal, do not judge too early.
 echo.
+echo  ------------------------------------------------------------
+echo  IMPORTANT: the next official update will overwrite app.asar and
+echo  delete app.asar.backup, wiping this patch. To stop that for good,
+echo  close Antigravity and run:  关闭自动更新.bat
+echo  (reversible any time with 恢复自动更新.bat)
+echo  ------------------------------------------------------------
+echo.
 echo  To roll back, run the restore script in this folder.
 echo.
 pause
@@ -108,8 +115,9 @@ for %%F in ("%HERE%\app.asar.zh-*") do echo          %%~nxF
 echo.
 echo  This pack only patches the exact version it was built for.
 echo  Options:
-echo    1. Update the pack:  python tools\port_to.py --version ^<installed ver^>
-echo    2. Download the matching release from the project page
+echo    1. Download the release matching your version from the project page
+echo    2. Rebuild the patch yourself - needs the full repo + Python 3:
+echo         python tools\port_to.py --version ^<installed ver^>
 echo    3. Do NOT force an older pack onto a newer client - it hangs on Loading
 echo.
 pause
