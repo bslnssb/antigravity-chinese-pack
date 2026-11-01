@@ -30,3 +30,11 @@ build/work-2.26/chk/
 build/work-2.26/memory-*.json
 # 写死过绝对路径的旧映射，已被 tools/patches/swap-map.relative.json 取代
 build/swap-map.json
+
+# 截图与比对的临时目录
+build/_shots/
+build/_cmp/
+build/_test_port.asar
+# 2.27 是自动更新踩坑时的中间版本，成品已由 2.28.2 取代
+build/work-2.27/
+build/work-2.28.2/tmp/

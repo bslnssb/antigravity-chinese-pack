@@ -4,7 +4,16 @@
 >
 > 关键词：反重力汉化 · Antigravity 汉化 · Antigravity 中文 · 界面汉化 · 中文补丁 · Chinese localization pack
 
-当前支持：**v2.26.0**（v2.25.1 保留兼容，见 [版本动态](#版本动态)）
+当前支持：**官方 2.28.2**（旧版本包仍保留，见 [版本动态](#版本动态)）
+
+## 界面预览
+
+| 主界面 | 设置页 |
+|---|---|
+| ![主界面](docs/screenshots/main.png) | ![设置](docs/screenshots/settings.png) |
+
+（截图取自 2.28.2 实机，左侧历史会话标题已模糊处理。个别官方新增文案可能仍显示英文，
+遇到可在 Issues 反馈。）
 
 ## 为什么选这个包（和其他汉化包的区别）
 
@@ -19,57 +28,95 @@
 | 版本不匹配时 | 软件被降级 ⚠️ | 永不降级 ✅ |
 | 完整性校验 | 多数未重算，可能报损坏 | 逐文件重算，启动自检通过 ✅ |
 | 回滚 | 要自己找官方包 | 双击 `一键恢复官方英文.bat` ✅ |
-| 新版本发布 | 等作者重发整包 | 翻译记忆自动搬运（见下）✅ |
+| 新版本发布 | 等作者重发整包 | `tools/port_to.py` 一条命令自动搬运 ✅ |
 
-## 安装（3 步，1 分钟）
+## 官方更新为什么会让汉化消失（重要）
 
-1. 确认 Antigravity 版本为 **2.26.0**（设置 → 关于）；若你还是 **2.25**，请改用 v2.25.1 包
-2. 完全退出 Antigravity（托盘图标也右键退出），把 `app.asar.zh-2.26.0` 复制到安装目录的 `resources\` 下，
-   **先把官方 `app.asar` 重命名为 `app.asar.bak`**（这就是你的回滚保险），再把汉化文件改名为 `app.asar`
-   - 安装目录一般在 `%LOCALAPPDATA%\Programs\Antigravity\resources\`
-3. 启动 Antigravity，界面即中文
-   - 首屏水合需 30–60 秒，稍等片刻中文才全部出现
+Antigravity 用的是 electron-updater + **NSIS 全量安装包**更新：新版本会下载一个约
+160 MB 的 `Antigravity-x64.exe`，退出时运行它，把整个安装目录覆盖一遍。
+`resources\` 里的 `app.asar` 被换成新版官方文件，**你加的 `app.asar.backup` 也一并被清掉**。
 
-**卸载/回滚**：双击包内 `一键恢复官方英文.bat`（自动识别 `app.asar.bak` / `app.asar.backup`）；
-或手动把 `app.asar.bak` 改回 `app.asar`。
+这不是本包的缺陷，是所有 asar 补丁的共同命运——官方不认识你改过的文件，覆盖就是它的正常行为。
+唯一能避免的办法是**永不更新客户端**，那代价太大。
+
+所以本包把"更新后重装"这件事做成了一键操作：
+
+```bat
+一键安装汉化.bat
+```
+
+脚本会自动找到安装目录、读出已装版本、挑出对应版本的补丁、首次运行时自动备份官方 asar，
+然后覆盖。整个过程不需要你记路径、不需要手动改名。
+
+如果脚本提示「没有匹配当前版本的补丁」，说明官方比本包新，见下一节。
+
+## 安装（1 步）
+
+1. 完全退出 Antigravity（托盘图标也要右键退出）
+2. 双击 `一键安装汉化.bat`
+3. 启动 Antigravity —— 首屏水合需 30–60 秒，中文才全部出现，别太早下结论
+
+**卸载/回滚**：双击 `一键恢复官方英文.bat`（自动识别 `app.asar.bak` / `app.asar.backup`）；
+或手动把 `app.asar.backup` 改回 `app.asar`。
+
+## 官方比本包新怎么办
+
+不用等发版，自己 30 秒就能做出一份：
+
+```bash
+# 1. 先备份官方原版（更新会删掉它，第一次一定要做）
+copy "%LOCALAPPDATA%\Programs\Antigravity\resources\app.asar" ^
+     "%LOCALAPPDATA%\Programs\Antigravity\resources\app.asar.backup"
+
+# 2. 用已安装的客户端作为底座，自动搬运译文并重打包
+python tools/port_to.py --version 2.29.0
+```
+
+产物是 `build/app.asar.zh-2.29.0`，改名为 `app.asar` 放进 `resources\` 即可。
+脚本会自动：抽出官方 6 个文件 → 套用译文记忆 → 补译官方新增文案 → 重算 integrity → 自检。
+
+只在 Windows、只依赖 Python 3（不需要 Node.js）。原理见
+[`Antigravity-中文汉化-AI操作手册.md`](Antigravity-中文汉化-AI操作手册.md)。
 
 ## 汉化覆盖范围
 
 - 应用菜单 / 托盘菜单 / 安装向导 / 主进程提示，全部完成
-- 界面层内置 **842 条运行时翻译字典**（设置、自动化、插件、技能、账户等界面文案）
-- 翻译质量：无机器翻译痕迹，术语统一
-
-## 版本升级时怎么办（本包独有）
-
-Antigravity 出了新版不想等？`tools/maintainer/` 里是一套**纯 Python 维护器**，把现有翻译
-自动搬运到新版文件（翻译记忆 + 精确匹配），再以新版为底座重打包并重算 integrity 哈希——
-不需要 Node.js。用法见 `tools/maintainer/README.md`。
+- 界面层内置 **1283 条运行时翻译字典**（设置、自动化、插件、技能、账户等界面文案）
+- 登录页、设置页、主界面、侧栏均为中文；专有名词（Antigravity、Gemini、Google）保持原样
 
 ## 仓库结构
 
 ```
-tools/antigravity-zh-patch.js   asar 解析 / 提取 / 构建 / 校验（Node 版）
-tools/maintainer/zh_merge.py    同上的纯 Python 实现（构建、翻译记忆搬运、自检）
-tools/patches/                  换装映射、842 条翻译字典、安装说明
-build/materials-2.25/           2.25 的 5 个换装源文件（当时还没纳入 ipcHandlers.js）
+tools/port_to.py                移植器：把译文搬到新版官方 asar（纯 Python）
+tools/preload-engine.js         固定的翻译引擎（词典 + DOM 翻译器）
+tools/porting-rules.json        人工补译规则（官方新增文案、代码拼接片段）
+tools/maintainer/zh_merge.py    asar 读写 / integrity 重算 / 打包自检
+tools/patches/                  换装映射、翻译字典、历次安装说明
 build/work-2.26/zh26/           2.26 的 6 个换装源文件
-一键恢复官方英文.bat              Windows 一键回滚（认 app.asar.bak / app.asar.backup）
-Antigravity-中文汉化-AI操作手册.md  面向 AI 代理/高级用户的完整可复现流程（含 asar 结构、踩坑清单）
+build/work-2.28.2/              2.28.2 的官方原始件与换装成品
+一键安装汉化.bat                 一键安装（自动识别版本 + 自动备份）
+一键恢复官方英文.bat             一键回滚
+Antigravity-中文汉化-AI操作手册.md  完整可复现流程（asar 结构、踩坑清单）
 ```
 
 ## 版本动态
 
-- **本包 v2.26.0（2026-10-25）** ↔ 官方 Antigravity 2.26.0（2026-10-22）：当前推荐版本
-- **本包 v2.25.1（2026-10-25）** ↔ 官方 Antigravity 2.25.0：仍可用，等你升级 2.26 后可换新包
-- 官方默认自动更新，会把 `app.asar` 覆盖回英文（并删掉你的 `app.asar.bak`）。
-  若本包还没跟上你被更新到的版本，可先关闭自动更新，避免界面回英文。
-- 本包更新发布在 Releases，更新日志见 `RELEASE-NOTES.md`。
+- **2.28.2**（2026-11-01）：跟随官方 2.28.2；修复译文误改代码标识符导致启动崩溃的问题；
+  补译登录页 3 条新文案；新增 `一键安装汉化.bat` 与 `tools/port_to.py`
+- **2.26.0**（2026-10-25）↔ 官方 2.26.0
+- **2.25.1**（2026-10-25）↔ 官方 2.25.0
+
+官方默认自动更新，会把 `app.asar` 覆盖回英文并删掉备份——重新跑一次 `一键安装汉化.bat` 即可。
 
 ## 常见问题
 
-**Q: 替换后启动白屏/报损坏？**
-A: 说明版本不匹配或哈希没对上。用 `app.asar.bak` 回滚，然后用维护器的 `verify`/
-`packselftest` 重新核对。本包构建时已通过逐文件哈希自检。
+**Q: 更新后界面变回英文了？**
+A: 正常现象，官方全量安装覆盖了 `app.asar`。重新运行 `一键安装汉化.bat`。备份也被删了的话，
+脚本会从当前这份官方 asar 重新建一个。
+
+**Q: 替换后启动白屏 / 卡在 Loading？**
+A: 说明补丁版本和客户端版本不一致。用 `app.asar.backup` 回滚，然后用
+`python tools/port_to.py --version <你的版本>` 重新生成。
 
 **Q: 会被封号吗？**
 A: 汉化只改本地界面文件，不上传任何数据，不影响账号。
