@@ -16,8 +16,8 @@
 |---|---|
 | ![主界面](docs/screenshots/main.png) | ![设置](docs/screenshots/settings.png) |
 
-（截图取自 2.28.2 实机，左侧历史会话标题已模糊处理。个别官方新增文案可能仍显示英文，
-遇到可在 Issues 反馈。）
+（截图取自 2.28.2 实机；左侧会话列表、账户头像与邮箱均已打码。个别官方新增文案可能仍显示英文，
+遇到可在 Issues 反馈。打码脚本见 `tools/redact_screenshots.py`。）
 
 ## 先说清楚：它是什么，代价是什么
 
@@ -211,6 +211,7 @@ python tools/port_to.py --version 2.29.0
 
 ```
 tools/port_to.py                移植器：把译文搬到新版官方 asar（纯 Python）
+tools/redact_screenshots.py     README 截图打码（账户、会话标题）
 tools/preload-engine.js         固定的翻译引擎（词典 + DOM 翻译器）
 tools/porting-rules.json        人工补译规则（官方新增文案、代码拼接片段）
 tools/auto-update-toggle.ps1    官方 autoCheckForUpdates 开关的实现（防更新冲掉补丁）
