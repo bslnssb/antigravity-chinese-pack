@@ -1,8 +1,0 @@
-feat(install): 桌面快捷方式「反重力（中文版）」
-
-- 新增 tools/make-shortcut.ps1：WScript.Shell COM 生成 .lnk，
-  目标 WSH 脚本宿主 + 启动反重力.vbs，图标取 Antigravity.exe,0
-- 一键安装汉化.bat 应用成功后自动建快捷方式（best-effort）
-- 新增 启动反重力.vbs：无黑窗启动器，设代理环境变量后拉起客户端
-- 打包脚本收录 VBS 与 ps1，安装说明/README/发布说明同步更新
-- 重新打包 v2.28.2 zip 并替换 GitHub Release 资产
