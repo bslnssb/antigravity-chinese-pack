@@ -174,7 +174,8 @@ tools/selfheal.ps1              自愈：比对 .zh-pack 标记后自动补回
 tools/detect-proxy.ps1          本地代理端口探测（候选端口清单在这里，别写进启动器）
 tools/maintainer/zh_merge.py    asar 读写 / integrity 重算 / 打包自检
 tools/auto-update-toggle.ps1    官方 autoCheckForUpdates 开关
-tools/find-install-dir.ps1      自定义安装目录兜底（注册表 UninstallString 反推）
+tools/find-install-dir.ps1      自定义安装目录兜底（注册表 UninstallString 反推）；
+                                -SetFile 把结果按 936 写成 set 语句给 bat call
 tools/make-shortcut.ps1         生成桌面「反重力（中文版）」快捷方式
 tools/redact_screenshots.py     README 截图打码
 scripts/                        维护链（扫描 / 回归 / 合并 / 重打包 / 发版）
@@ -182,7 +183,7 @@ build/work-*/                   各版本的官方原始件与换装成品
 一键安装汉化.bat                 安装（识别版本 + 备份 + 建快捷方式）
 启动反重力.vbs                   无黑窗启动器：探到本地代理才设代理、查自愈状态后拉起客户端
 关闭自动更新.bat / 恢复自动更新.bat
-一键恢复官方英文.bat             回滚
+一键恢复官方英文.bat             回滚：找备用 asar 复制回去 + 删 .zh-pack 标记
 ```
 
 ## 7. 和其他汉化包的区别
@@ -222,3 +223,14 @@ powershell -ExecutionPolicy Bypass -File tools\selfheal.ps1 -Check
 把 `-Check` 换成 `-Heal` 立刻补好。
 
 文件大小对照：官方 2.28.2 约 4.6 MB，汉化版约 4.9 MB（多出来的是翻译引擎）。
+
+### 8.1 写 bat 时容易踩的两个坑
+
+- **PowerShell 5.1 的输出编码和 `for /f` 对不上**。PS 把 stdout 写进管道/文件时是
+  UTF-8，而 cmd 的 `for /f` 拿到的是 ANSI(936) 字节。安装路径里只要有一个中文字符
+  （用户名是中文就一定会有），两边就对不上，随后的 `if exist` / `copy` 全部失败，
+  兜底等于没兜住。所以 `find-install-dir.ps1` 有 `-SetFile`：把结果按 936 写成
+  `set "RT=..."` 到临时文件，bat 用 `call` 读回来。
+- **`( )` 块里 echo 未加引号的路径会炸**。`C:\Program Files (x86)\...` 里的右括号
+  会提前结束 if/for 块，报 `... was unexpected at this time`。要么把路径用引号包起来，
+  要么把这些 echo 挪出块、用 `goto` 跳转。

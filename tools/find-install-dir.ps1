@@ -1,4 +1,4 @@
-# 找出 Antigravity 的 resources 目录，供 一键安装汉化.bat 在标准路径都落空时兜底。
+﻿# 找出 Antigravity 的 resources 目录，供 一键安装汉化.bat 在标准路径都落空时兜底。
 #
 # 为什么需要它：官方 NSIS 安装包允许改安装目录（装到 D:\Apps\Antigravity 之类），
 # 这时 %LOCALAPPDATA%\Programs\Antigravity 里没有东西，安装脚本会误报"没装"。
@@ -6,7 +6,15 @@
 # 一定指向 "<安装目录>\Uninstall Antigravity.exe"，从它反推最可靠。
 #
 # 输出：找到则打印 resources 目录的绝对路径（一行），找不到则什么都不打印。
-# 退出码：0 找到 / 1 没找到。bat 里只取 stdout，不依赖退出码。
+# 退出码：0 找到 / 1 没找到。
+#
+# -SetFile <path>：不打印，改成把 `set "RT=<路径>"` 按 936 编码写进该文件。
+# 为什么需要它：PowerShell 5.1 把输出写进管道/文件时用的是 UTF-8，而 cmd 的
+# for /f 拿到的是 ANSI 代码页字节。路径里一旦有中文（用户名是中文就会有），
+# 两头对不上，随后的 if exist / copy 全部失败 —— 兜底等于没兜住。
+# 所以 bat 改成：-SetFile 写文件 -> call 该文件。
+
+param([string]$SetFile = '')
 
 $ErrorActionPreference = 'SilentlyContinue'
 
@@ -47,10 +55,20 @@ foreach ($root in $roots) {
 foreach ($d in $dirs) {
     if (-not $d) { continue }
     $res = Join-Path $d 'resources'
-    if (Test-Path (Join-Path $res 'app.asar')) {
-        Write-Output $res
+    if (-not (Test-Path (Join-Path $res 'app.asar'))) { continue }
+
+    if ($SetFile) {
+        $line = 'set "RT=' + $res + '"' + "`r`n"
+        try {
+            [IO.File]::WriteAllText($SetFile, $line, [Text.Encoding]::GetEncoding(936))
+        } catch {
+            [IO.File]::WriteAllText($SetFile, $line, [Text.Encoding]::UTF8)
+        }
         exit 0
     }
+
+    Write-Output $res
+    exit 0
 }
 
 exit 1

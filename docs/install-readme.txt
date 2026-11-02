@@ -26,9 +26,12 @@ Antigravity 中文汉化包 v{version}
 
 回滚
 ----
-双击  一键恢复官方英文.bat，会自动找 app.asar.backup 或 app.asar.bak。
-注意：回滚后再用「反重力（中文版）」启动，自愈会把中文补回来（设计如此）。
-想彻底回英文，请改用 Antigravity 自己的桌面图标启动。
+双击  一键恢复官方英文.bat。它自己找安装目录，把 app.asar.backup（或
+app.asar.bak）复制回去，并删掉补丁标记 .zh-pack。
+以后请用 Antigravity 自己的桌面图标启动——从「反重力（中文版）」启动的话，
+自愈会按设计把中文补回来。
+复制失败会直接报错退出（多半是 Antigravity 还开着，或装在 Program Files
+下没权限：先关掉它，再右键「以管理员身份运行」这个脚本）。
 
 
 关于代理
