@@ -6,6 +6,12 @@
 
 ![主界面](docs/screenshots/main.png)
 
+设置面板同样全部中文：
+
+![设置 · 常规设置](docs/screenshots/settings-general.png)
+
+![设置 · 应用设置](docs/screenshots/settings-app.png)
+
 ## 安装
 
 1. **下载** Releases 里的 `Antigravity-Chinese-Pack-v2.28.2.zip`，解压到任意文件夹

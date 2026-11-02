@@ -91,7 +91,10 @@ node   scripts/scan_ui.js              连运行中客户端的 CDP，列出未�
 node   scripts/test_engine.js          引擎回归（41 个用例，钉死这类事故）
 python scripts/merge_dict.py           把 tools/patches/ui-extra.json 合并进引擎
 python scripts/rebuild_preload.py      只替换 asar 里的 preload，秒级重打包
+node   scripts/shot_settings.js        截设置面板若干页到 build/shots/，供 README 用
 ```
+
+> 截图脚本截图后要手工糊掉左下角账号区（含邮箱），别把个人信息带进仓库。
 
 补词只改 `tools/patches/ui-extra.json`，不动引擎源码：
 
