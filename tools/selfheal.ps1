@@ -275,6 +275,99 @@ function Expand-PayloadFromZip([string]$zipPath, [string]$ver, [string]$destDir)
     }
 }
 
+# ---------------- 现场移植 ----------------
+# 官方更新到 N+1、本仓库的 N+1 包还没发布时的兜底：用新版官方 asar 当底座，
+# 把手里旧版本的译文搬过去。功能是新版的，界面还是中文。
+#
+# 为什么不是"直接拿旧版汉化 asar 覆盖"：那会把应用代码一起降级，
+# 轻则缺功能，重则白屏。移植只搬「英文→中文」的字符串替换对。
+#
+# 运行时不需要用户装 Node/Python：Antigravity 自带 Electron，设
+# ELECTRON_RUN_AS_NODE=1 后它就是一个 Node（本机实测 v24.21.0）。
+
+function Invoke-Port([string]$ver, [string]$resDir) {
+    $script:PortError = ''
+
+    if (-not $PackDir) { $script:PortError = '没拿到汉化包目录（-PackDir 为空）'; return '' }
+
+    $portJs = Join-Path $PackDir 'tools\port\port.js'
+    if (-not (Test-Path $portJs)) { $script:PortError = '包内缺少 tools\port\port.js'; return '' }
+
+    $exe = Join-Path (Split-Path -Parent $resDir) 'Antigravity.exe'
+    if (-not (Test-Path $exe)) { $script:PortError = '找不到 Antigravity.exe（移植需要它当 Node 运行时）'; return '' }
+
+    # 记忆文件决定"用哪个版本的译文"，包内通常只有一个
+    $memDir = Join-Path $PackDir 'tools\patches'
+    $mems = @(Get-ChildItem $memDir -Filter 'memory-*.json' -ErrorAction SilentlyContinue)
+    if ($mems.Count -eq 0) { $script:PortError = '包内缺少翻译记忆 tools\patches\memory-*.json'; return '' }
+    $ref = $mems[0].BaseName -replace '^memory-', ''
+
+    $cache = Get-CacheDir
+    $srcAsar = Join-Path $resDir 'app.asar'
+    # 中间文件一律用 .bin：某些环境（包括开发时的沙箱文件代理）会按 .asar
+    # 扩展名做特殊处理，对这类路径的读写会被拦。最终覆盖时再变成 app.asar。
+    $baseCopy = Join-Path $cache "official-$ver.bin"
+    try {
+        Copy-Item $srcAsar $baseCopy -Force
+    } catch {
+        $script:PortError = "复制官方 asar 失败：$($_.Exception.Message)"
+        return ''
+    }
+
+    # 底座必须是官方原版：如果当前已经是汉化版，拿它当底座等于把中文当英文，
+    # 产物会变成"中文再套一层"，宁可不动。
+    try {
+        $bytes = [System.IO.File]::ReadAllBytes($baseCopy)
+        $probe = [System.Text.Encoding]::UTF8.GetString($bytes)
+        $isZh = $probe.Contains('__agyTranslateText')
+        $bytes = $null
+        $probe = $null
+    } catch {
+        $isZh = $false
+    }
+    if ($isZh) {
+        Remove-Item $baseCopy -Force -ErrorAction SilentlyContinue
+        $script:PortError = '当前 app.asar 已经是汉化版，不能作为移植底座'
+        return ''
+    }
+
+    $outAsar = Join-Path $cache "port-$ver.bin"
+    $portLog = Join-Path $cache "port-$ver.log"
+    if (Test-Path $outAsar) { Remove-Item $outAsar -Force -ErrorAction SilentlyContinue }
+    if (Test-Path $portLog) { Remove-Item $portLog -Force -ErrorAction SilentlyContinue }
+
+    $saved = $env:ELECTRON_RUN_AS_NODE
+    $env:ELECTRON_RUN_AS_NODE = '1'
+    $code = -1
+    try {
+        & $exe $portJs '--base' $baseCopy '--out' $outAsar '--ref' $ref '--packdir' $PackDir '--log' $portLog 2>&1 | Out-Null
+        $code = $LASTEXITCODE
+    } catch {
+        $script:PortError = "启动移植器失败：$($_.Exception.Message)"
+    } finally {
+        if ($null -eq $saved) { Remove-Item Env:\ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue }
+        else { $env:ELECTRON_RUN_AS_NODE = $saved }
+    }
+
+    if ($code -ne 0 -or -not (Test-Path $outAsar)) {
+        if (-not $script:PortError) {
+            $detail = ''
+            if (Test-Path $portLog) {
+                $line = Get-Content $portLog -Encoding UTF8 -ErrorAction SilentlyContinue |
+                        Where-Object { $_ -match '^(FAIL|RESULT|EXCEPTION)' } |
+                        Select-Object -Last 1
+                if ($line) { $detail = $line }
+            }
+            if (-not $detail) { $detail = "移植器退出码 $code" }
+            if ($detail.Length -gt 160) { $detail = $detail.Substring(0, 160) + '…' }
+            $script:PortError = $detail
+        }
+        return ''
+    }
+
+    return $outAsar
+}
+
 # ---------------- 主流程 ----------------
 
 $resDir = Get-ResourcesDir $Resources
@@ -324,14 +417,25 @@ if (-not $local) {
     }
     if ($res -eq 'notfound') {
         if (Test-Path $tmpZip) { Remove-Item $tmpZip -Force -ErrorAction SilentlyContinue }
-        Write-Result 20 'error' ("v{0} 的汉化包还没有发布（官方太新，我们还没跟上）" -f $Version) 'download'
+        # 现成包没有 → 现场移植：以新版官方 asar 为底座，把手里旧版本的译文搬过去。
+        # 这样功能是新版的、界面还是中文，而不是把人推回英文。
+        $script:PortError = ''
+        $ported = Invoke-Port $Version $resDir
+        if ($ported) {
+            $local = @{ path = $ported; source = 'port' }
+        } else {
+            $why = $script:PortError
+            if (-not $why) { $why = '未知原因' }
+            Write-Result 20 'error' ("v{0} 的汉化包还没有发布，现场移植也没成功：{1}" -f $Version, $why) 'download'
+        }
+    } else {
+        Move-Item $tmpZip $zipPath -Force
+        $local = @{ path = $zipPath; source = 'download' }
     }
-    Move-Item $tmpZip $zipPath -Force
-    $local = @{ path = $zipPath; source = 'download' }
 }
 
-# 拿到的是 zip 就解出 asar
-if ($local.source -ne 'local') {
+# 拿到的是 zip 就解出 asar；local / port 本身已经是 asar 文件
+if ($local.source -eq 'zip' -or $local.source -eq 'download') {
     $cache = Get-CacheDir
     try {
         $payload = Expand-PayloadFromZip $local.path $Version $cache

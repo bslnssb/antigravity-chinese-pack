@@ -108,10 +108,11 @@ If healState = "need" Then
     healVer = FieldOf(healOut, "VER")
     Log "selfheal: need, ver=" & healVer & " source=" & healSrc
 
-    ' 只有要联网取包时才提示（本地有成品时复制只要几十毫秒，用户感觉不到）
-    If healSrc = "download" Then
+    ' 本地有成品时复制只要几十毫秒，用户感觉不到；要下载或现场移植就得几秒，
+    ' 先给个提示，否则用户会以为双击没反应
+    If healSrc = "download" Or healSrc = "port" Then
         sh.Popup "检测到 Antigravity 已更新到 " & healVer & "，" & vbCrLf & _
-                 "正在自动重新应用中文包，请稍等…", 3, "Antigravity 中文版", 64
+                 "正在自动准备这个版本的中文包，请稍等…", 4, "Antigravity 中文版", 64
     End If
 
     healOut = RunSelfheal("-Heal")
@@ -126,8 +127,10 @@ If healState = "need" Then
         If hmsg = "" Then hmsg = "自愈脚本没有返回原因。"
 
         If hcode = "20" Then
-            hcont = MsgBox("官方已经更新到 " & healVer & "，" & vbCrLf & _
-                           "但这个版本的中文包还没有发布。" & vbCrLf & vbCrLf & _
+            ' 连现场移植都没成功（例如官方改动太大、或包装在 Program Files 没有写权限）
+            hcont = MsgBox("官方已经更新到 " & healVer & "。" & vbCrLf & _
+                           "这个版本的中文包还没发布，用旧译文现场移植也没成功。" & vbCrLf & vbCrLf & _
+                           hmsg & vbCrLf & vbCrLf & _
                            "要先用英文版启动吗？" & vbCrLf & _
                            "（中文包发布后，下次启动会自动恢复中文）", _
                            vbQuestion + vbYesNo + vbDefaultButton1, "Antigravity 中文版")

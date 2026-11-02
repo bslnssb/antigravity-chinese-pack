@@ -31,6 +31,12 @@ PAYLOAD_FILES = [
     "tools/find-install-dir.ps1",
     "tools/make-shortcut.ps1",
     "tools/selfheal.ps1",
+    # 现场移植：官方更新到新版本、本版包还没发布时，用这些素材把旧译文搬到
+    # 新版本官方 asar 上（运行时借 Antigravity 自带 Electron 当 Node，用户无需装环境）
+    "tools/port/port.js",
+    "tools/patches/memory-{version}.json",
+    "tools/preload-engine.js",
+    "tools/porting-rules.json",
 ]
 
 
@@ -42,11 +48,13 @@ def main() -> int:
     a = ap.parse_args()
 
     ver = a.version
+    # PAYLOAD_FILES 里的 {version} 展开成本次版本（翻译记忆是按参考版本命名的）
+    payload_files = [p.replace("{version}", ver) for p in PAYLOAD_FILES]
     asar = Path(a.asar) if a.asar else ROOT / "build" / f"app.asar.zh-{ver}"
     if not asar.is_file():
         raise SystemExit(f"找不到汉化成品: {asar}")
 
-    for rel in PAYLOAD_FILES:
+    for rel in payload_files:
         if not (ROOT / rel).is_file():
             raise SystemExit(f"缺少打包文件: {rel}")
 
@@ -60,7 +68,7 @@ def main() -> int:
 
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
         z.write(asar, f"app.asar.zh-{ver}")
-        for rel in PAYLOAD_FILES:
+        for rel in payload_files:
             z.write(ROOT / rel, rel)
         info = zipfile.ZipInfo("安装说明.txt")
         info.compress_type = zipfile.ZIP_DEFLATED
@@ -70,7 +78,7 @@ def main() -> int:
     with zipfile.ZipFile(out) as z:
         names = z.namelist()
         bad = z.testzip()
-    need = {f"app.asar.zh-{ver}", "安装说明.txt", *PAYLOAD_FILES}
+    need = {f"app.asar.zh-{ver}", "安装说明.txt", *payload_files}
     missing = need - set(names)
 
     print(f"产物 : {out}")
