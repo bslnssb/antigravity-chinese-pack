@@ -30,6 +30,7 @@ PAYLOAD_FILES = [
     "tools/auto-update-toggle.ps1",
     "tools/find-install-dir.ps1",
     "tools/make-shortcut.ps1",
+    "tools/selfheal.ps1",
 ]
 
 

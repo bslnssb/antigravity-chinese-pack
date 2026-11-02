@@ -102,6 +102,10 @@ if errorlevel 1 (
 
 echo  [OK] Chinese pack applied for version %IVER%.
 echo.
+rem ---- 5b. stamp the .zh-pack marker (lets the launcher skip re-patching) ----
+if exist "%HERE%\tools\selfheal.ps1" (
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%HERE%\tools\selfheal.ps1" -Heal -Resources "%RT%" -PackDir "%HERE%" >nul 2>&1
+)
 rem ---- 6. desktop shortcut (best-effort) ----
 if exist "%HERE%\启动反重力.vbs" (
     powershell -NoProfile -ExecutionPolicy Bypass -File "%HERE%\tools\make-shortcut.ps1" -VbsPath "%HERE%\启动反重力.vbs" -ExePath "%RT%\..\Antigravity.exe"
