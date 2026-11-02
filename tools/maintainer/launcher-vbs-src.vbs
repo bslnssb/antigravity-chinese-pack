@@ -183,7 +183,7 @@ If Not AppRunning() Then
 
     ' 这次是"现场移植"刚补上去的：大概率是移植产物与新版本客户端不兼容。
     ' 回滚到官方英文版并留一条"别再自动移植"的记录，否则用户会卡在反复重试里。
-    If healedSrc = "port" And healedRes <> "" Then
+    If healSrc = "port" And healedRes <> "" Then
         RevertPort healedRes, healVer
         MsgBox "刚才自动移植的中文包没能启动，已回滚到官方英文版。" & vbCrLf & vbCrLf & _
                "这样至少客户端还能用。等本仓库发布 v" & healVer & " 的正式中文包后，" & vbCrLf & _
