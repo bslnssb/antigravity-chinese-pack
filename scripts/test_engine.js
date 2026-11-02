@@ -59,6 +59,18 @@ const CASES = [
     ['Shortcut Ctrl+K for Open Conversation Picker', '打开会话选择器（Ctrl+K）'],
     ['Select project, current: No Project', '选择项目，当前：无项目'],
     ['Rules: 4,515 tokens', '规则：4,515 Tokens'],
+    // v4.4：顶栏菜单 / 历史会话设置面板 / 侧边栏会话列表
+    ['Workspace', '工作区'],
+    ['Permission Settings', '权限设置'],
+    ['Agent settings and permissions for conversations outside of projects.', '项目之外会话的智能体设置与权限。'],
+    ['Also includes', '此外还包含'],
+    ['when working in these conversations.', '（仅在这些会话中生效）。'],
+    ['10d', '10 天前'],
+    ['3h', '3 小时前'],
+    ['Search Conversations', '搜索会话'],
+    // 反向保护：不能把含 Workspace 的长句啃坏
+    ['Use Workspace Settings', '使用工作区设置'],
+    ['Also includes global settings when working', '在当前项目中工作时，同时继承并应用全局设置'],
 ];
 
 let fail = 0;

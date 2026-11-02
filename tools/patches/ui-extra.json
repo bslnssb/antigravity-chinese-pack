@@ -107,7 +107,15 @@
     "to ask for content changes for legal reasons.": "申请出于法律原因修改内容。",
     "and select": "并选择",
     "plan": "计划",
-    "to have the agent generate a plan.": "让智能体生成计划。"
+    "to have the agent generate a plan.": "让智能体生成计划。",
+    "Workspace": "工作区",
+    "Permission Settings": "权限设置",
+    "Agent settings and permissions for conversations outside of projects.": "项目之外会话的智能体设置与权限。",
+    "Search Conversations": "搜索会话",
+    "Updating AI Memory With File": "用文件更新 AI 记忆",
+    "No conversations yet": "暂无会话",
+    "New Conversation": "新建会话",
+    "Untitled": "未命名"
   },
   "phrase": {
     "Learn more.": "了解更多。",

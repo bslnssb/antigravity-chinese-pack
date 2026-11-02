@@ -121,9 +121,8 @@ function classify(s) {
     const c = await connect(target.webSocketDebuggerUrl);
     await c.evaluate('1');
 
-    const clickArg = process.argv.find((a) => a.startsWith('--click='));
-    if (clickArg) {
-        const label = clickArg.slice('--click='.length);
+    const clickArgs = process.argv.filter((a) => a.startsWith('--click=')).map((a) => a.slice('--click='.length));
+    for (const label of clickArgs) {
         const r = await c.evaluate(clickExpr(label));
         console.log(`点击「${label}」: ${r}`);
         await new Promise((ok) => setTimeout(ok, 1200));
