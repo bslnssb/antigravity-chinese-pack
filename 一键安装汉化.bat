@@ -24,10 +24,14 @@ for %%P in ("%LOCALAPPDATA%\Programs\Antigravity\resources" "%PROGRAMFILES%\Anti
 rem ---- 1b. fall back to the install path recorded in the registry ----
 rem     covers custom install dirs (D:\Apps\Antigravity etc.) where the
 rem     three standard locations above do not exist
-if not defined RT (
-    if exist "%HERE%\tools\find-install-dir.ps1" (
-        for /f "usebackq delims=" %%P in (`powershell -NoProfile -ExecutionPolicy Bypass -File "%HERE%\tools\find-install-dir.ps1"`) do set "RT=%%P"
-    )
+rem     -SetFile + call, not for /f: PowerShell writes UTF-8 into a pipe while
+rem     cmd's for /f reads ANSI bytes, so an install path containing Chinese
+rem     characters never matched. The helper now emits a "set" line instead.
+if not defined RT if exist "%HERE%\tools\find-install-dir.ps1" (
+    del /f /q "%TEMP%\antigravity-install-dir.bat" >nul 2>&1
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%HERE%\tools\find-install-dir.ps1" -SetFile "%TEMP%\antigravity-install-dir.bat" >nul 2>&1
+    if exist "%TEMP%\antigravity-install-dir.bat" call "%TEMP%\antigravity-install-dir.bat"
+    del /f /q "%TEMP%\antigravity-install-dir.bat" >nul 2>&1
 )
 if defined RT if not exist "%RT%\app.asar" set "RT="
 
@@ -42,6 +46,32 @@ if not defined RT (
     exit /b 1
 )
 echo  Install dir : %RT%
+
+rem ---- 1c. write permission probe ----
+rem     Antigravity installed under Program Files is not writable by a normal
+rem     account. Say so now, instead of letting the user reach a generic
+rem     "Copy failed" later and guess.
+set "WPROBE=%RT%\.zh-write-probe"
+2>nul > "%WPROBE%" echo x
+if not exist "%WPROBE%" goto :nowrite
+del /f /q "%WPROBE%" >nul 2>&1
+if exist "%WPROBE%" goto :nowrite
+goto :writable
+
+:nowrite
+echo.
+echo  [ERROR] This account cannot write to:
+echo          %RT%
+echo  Antigravity is installed under Program Files, so a normal user
+echo  cannot replace app.asar there.
+echo  Fix: close Antigravity, then right-click 一键安装汉化.bat and choose
+echo       "Run as administrator" ^(one time is enough^).
+echo  Or reinstall Antigravity to its default per-user location.
+echo.
+pause
+exit /b 1
+
+:writable
 
 rem ---- 2. read installed version from the exe ----
 rem     ProductVersion comes back as 2.28.2.0 (four parts), so try

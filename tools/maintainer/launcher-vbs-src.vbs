@@ -153,6 +153,17 @@ If healState = "need" Then
                 Log "user cancelled (no pack for this version)"
                 WScript.Quit 0
             End If
+        ElseIf hcode = "30" Then
+            ' 装在 Program Files、当前账户没有写权限。这是普通启动器改不了的唯一一种
+            ' 情况，必须把解法说死，否则用户每次启动都是英文、还以为包坏了。
+            MsgBox "中文包装不进来：当前账户没有这个目录的写入权限。" & vbCrLf & vbCrLf & _
+                   hmsg & vbCrLf & vbCrLf & _
+                   "修一次就好：" & vbCrLf & _
+                   "1. 完全退出 Antigravity" & vbCrLf & _
+                   "2. 右键「一键安装汉化.bat」→「以管理员身份运行」" & vbCrLf & _
+                   "3. 以后照常双击本启动器" & vbCrLf & vbCrLf & _
+                   "这次先用当前界面启动。", _
+                   vbExclamation, "Antigravity 中文版"
         Else
             MsgBox hmsg & vbCrLf & vbCrLf & _
                    "本次先用当前界面启动（可能是英文）。" & vbCrLf & vbCrLf & _

@@ -23,8 +23,9 @@
 #   20  该版本还没有汉化包（Release 404）
 #   21  下载失败（网络 / 代理）
 #   22  包损坏或解压失败
-#   30  没有写权限（装在 Program Files，需要管理员）
-#   31  app.asar 被占用（Antigravity 正在运行）
+#   30  没有写权限（装在 Program Files，当前账户改不了）
+#       → 唯一办法：右键 一键安装汉化.bat →「以管理员身份运行」（只需一次）
+#   31  app.asar 被占用（Antigravity 正在运行）或覆盖时被拒
 #
 #  输出（-Quiet 时只有这些 KEY=VALUE 行，供启动器解析）：
 #    STATE=ready|need|error
@@ -480,7 +481,9 @@ try {
     [System.IO.File]::WriteAllText($probe, 'x')
     Remove-Item $probe -Force
 } catch {
-    Write-Result 30 'error' '没有写入权限（Antigravity 装在 Program Files，请右键“以管理员身份运行”启动器）' 'local'
+    Write-Result 30 'error' (('没有写入权限：Antigravity 装在 Program Files，当前账户改不了 {0}。' +
+        '办法：先退出 Antigravity，再右键「一键安装汉化.bat」→「以管理员身份运行」（只需一次）；' +
+        '或把 Antigravity 重装到默认的个人目录。') -f $resDir) 'local'
 }
 
 # ---- 被占用检查 ----
@@ -489,7 +492,7 @@ try {
     $fs = [System.IO.File]::Open($lock, 'Open', 'ReadWrite', 'None')
     $fs.Close()
 } catch {
-    Write-Result 31 'error' 'app.asar 正被占用（Antigravity 还在运行）' 'local'
+    Write-Result 31 'error' 'app.asar 正被占用，先彻底退出 Antigravity（含托盘图标）再试' 'local'
 }
 
 # ---- 备份官方 asar（只在还没有备份、且当前不是补丁版时做）----
@@ -504,7 +507,11 @@ if (-not (Test-Path $bak)) {
 try {
     Copy-Item $payload $asar -Force
 } catch {
-    Write-Result 31 'error' ("覆盖 app.asar 失败：{0}" -f $_.Exception.Message) $local.source
+    $why = $_.Exception.Message
+    if ($_.Exception -is [System.UnauthorizedAccessException] -or $_.Exception.InnerException -is [System.UnauthorizedAccessException]) {
+        $why = $why + '（没有写入权限：右键「一键安装汉化.bat」→「以管理员身份运行」）'
+    }
+    Write-Result 31 'error' ("覆盖 app.asar 失败：{0}" -f $why) $local.source
 }
 
 $newSize = (Get-Item $asar).Length
