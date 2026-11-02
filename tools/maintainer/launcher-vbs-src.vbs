@@ -99,9 +99,13 @@ ClearEnv "NODE_OPTIONS"
 ' ---------- 5. 自愈：官方更新覆盖后把中文补回来 ----------
 ' 放在设完代理之后：需要下载时走同一个代理。放在启动之前：覆盖 asar
 ' 时应用必须没在跑（第 2 步已确认）。
-Dim healOut, healState, healSrc, healVer
+Dim healOut, healState, healSrc, healVer, healedRes
 healOut = RunSelfheal("-Check")
 healState = FieldOf(healOut, "STATE")
+' 记录"这次是不是刚做了现场移植"，启动失败时要靠它决定回滚
+healSrc = ""
+healVer = ""
+healedRes = ""
 
 If healState = "need" Then
     healSrc = FieldOf(healOut, "SOURCE")
@@ -117,8 +121,13 @@ If healState = "need" Then
 
     healOut = RunSelfheal("-Heal")
     healState = FieldOf(healOut, "STATE")
+    healSrc = FieldOf(healOut, "SOURCE")
     Log "selfheal: done state=" & healState & " code=" & FieldOf(healOut, "CODE") & _
-        " | " & FieldOf(healOut, "DETAIL")
+        " source=" & healSrc & " | " & FieldOf(healOut, "DETAIL")
+    If healState = "ready" Then
+        healedRes = FieldOf(healOut, "RES")
+        healVer = FieldOf(healOut, "VER")
+    End If
 
     If healState <> "ready" Then
         Dim hcode, hmsg, hcont
@@ -171,6 +180,23 @@ sh.Run cmd, 1, False
 WScript.Sleep 5000
 If Not AppRunning() Then
     Log "WARN: process not alive 5s after launch"
+
+    ' 这次是"现场移植"刚补上去的：大概率是移植产物与新版本客户端不兼容。
+    ' 回滚到官方英文版并留一条"别再自动移植"的记录，否则用户会卡在反复重试里。
+    If healedSrc = "port" And healedRes <> "" Then
+        RevertPort healedRes, healVer
+        MsgBox "刚才自动移植的中文包没能启动，已回滚到官方英文版。" & vbCrLf & vbCrLf & _
+               "这样至少客户端还能用。等本仓库发布 v" & healVer & " 的正式中文包后，" & vbCrLf & _
+               "再跑一次 一键安装汉化.bat 即可恢复中文。" & vbCrLf & vbCrLf & _
+               "想再试一次移植：删掉" & vbCrLf & _
+               "  %LOCALAPPDATA%\Antigravity\zh-port-skip" & vbCrLf & _
+               "后重新双击本快捷方式。" & vbCrLf & vbCrLf & _
+               "排查日志：" & tmpDir & "\antigravity-launch.log", _
+               vbExclamation, "Antigravity 中文版"
+        Log "port rollback done (skip recorded)"
+        WScript.Quit 0
+    End If
+
     MsgBox "Antigravity 启动后立刻退出了（没有窗口，日志里也没有启动记录）。" & vbCrLf & vbCrLf & _
            "最常见的原因：" & vbCrLf & _
            "1. 有一个没退干净的 Antigravity 进程占着单实例锁" & vbCrLf & _
@@ -309,6 +335,30 @@ Function RunHidden(cmdline)
     If Err.Number <> 0 Then Err.Clear
     On Error GoTo 0
 End Function
+
+' 回滚现场移植：用备份的官方 asar 覆盖回去、删掉补丁标记，并记一条
+' "这个版本别再自动移植"——否则下次启动又会移植、又起不来，用户就卡循环了。
+Sub RevertPort(resDir, ver)
+    On Error Resume Next
+    Dim bak, cur, folder, skipFile, f
+    bak = resDir & "\app.asar.backup"
+    cur = resDir & "\app.asar"
+    If fso.FileExists(bak) Then fso.CopyFile bak, cur, True
+    If fso.FileExists(resDir & "\.zh-pack") Then fso.DeleteFile resDir & "\.zh-pack", True
+    If ver <> "" Then
+        folder = sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Antigravity"
+        If Not fso.FolderExists(folder) Then fso.CreateFolder folder
+        skipFile = folder & "\zh-port-skip"
+        Set f = fso.OpenTextFile(skipFile, 8, True)
+        f.WriteLine ver
+        f.Close
+    End If
+    If Err.Number <> 0 Then
+        Log "revert err: " & Err.Description
+        Err.Clear
+    End If
+    On Error GoTo 0
+End Sub
 
 ' 彻底移除环境变量：先置空（Windows 上等于删除），再 Remove 兜底。
 ' 只置空在某些宿主下会留下一个值为空的变量，Electron 可能仍把它当"已设置"。

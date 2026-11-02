@@ -387,6 +387,17 @@ $curSize = (Get-Item $asar).Length
 
 # ---- 快速路径：标记匹配就放行 ----
 if (-not $Heal) {
+    # 上一次现场移植的产物没能启动（启动器回滚并留了记录），就不要每次再硬试一遍，
+    # 否则用户会卡在"双击 → 等几秒 → 起不来"的循环里。
+    $skipFile = Join-Path $env:LOCALAPPDATA 'Antigravity\zh-port-skip'
+    if (Test-Path $skipFile) {
+        $skipped = Get-Content $skipFile -Encoding UTF8 -ErrorAction SilentlyContinue |
+                   Where-Object { $_.Trim() } | Select-Object -Last 1
+        if ($skipped -and $skipped.Trim() -eq $Version) {
+            Write-Result 0 'ready' ("v{0} 的移植版启动失败过，已停用自动移植（删掉 {1} 可重试）" -f $Version, $skipFile) 'skip'
+        }
+    }
+
     $m = Read-Marker $resDir
     if ($m.version -eq $Version -and $m.size -eq "$curSize") {
         Write-Result 0 'ready' ("已是中文版（{0}），无需重新打补丁" -f $Version) 'marker'
@@ -400,6 +411,18 @@ if (-not $Heal) {
 }
 
 # ---- 打补丁 ----
+# 这次移植过并且失败过的版本，直接放行（否则每次启动都白等几秒）
+$skipFile2 = Join-Path $env:LOCALAPPDATA 'Antigravity\zh-port-skip'
+$portSkipped = $false
+if (Test-Path $skipFile2) {
+    $sk = Get-Content $skipFile2 -Encoding UTF8 -ErrorAction SilentlyContinue |
+          Where-Object { $_.Trim() } | Select-Object -Last 1
+    if ($sk -and $sk.Trim() -eq $Version) { $portSkipped = $true }
+}
+if ($portSkipped) {
+    Write-Result 0 'ready' ("v{0} 暂用官方英文版（移植版启动失败过，删掉 {1} 可重试）" -f $Version, $skipFile2) 'skip'
+}
+
 $local = Find-LocalPayload $Version
 if (-not $local) {
     $url = "https://github.com/$RepoOwner/$RepoName/releases/download/v$Version/Antigravity-Chinese-Pack-v$Version.zip"
