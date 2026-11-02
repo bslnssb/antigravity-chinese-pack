@@ -29,6 +29,7 @@ PAYLOAD_FILES = [
     "启动反重力.vbs",
     "tools/auto-update-toggle.ps1",
     "tools/find-install-dir.ps1",
+    "tools/detect-proxy.ps1",
     "tools/make-shortcut.ps1",
     "tools/selfheal.ps1",
     # 现场移植：官方更新到新版本、本版包还没发布时，用这些素材把旧译文搬到

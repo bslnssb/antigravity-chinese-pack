@@ -145,7 +145,7 @@ def main() -> int:
     out_dir = Path(a.out) if a.out else Path(os.path.expanduser("~")) / "Desktop"
     out = out_dir / f"{a.name}.lnk"
     arguments = f'"{vbs}"'
-    desc = "启动已汉化的 Antigravity（自动走本地代理 127.0.0.1:7897）"
+    desc = "启动已汉化的 Antigravity（自动探测本地代理）"
 
     try:
         import pylnk3  # 可选依赖：生成带 IDList 的完整快捷方式

@@ -60,6 +60,23 @@ flowchart TD
 | 30 | 无写权限（装在 `C:\Program Files` 且非管理员） |
 | 31 | 文件被占用（客户端没退干净） |
 
+### 2.1 代理：探到才设，探不到就不动
+
+启动器不写死任何端口（早期版本写死了作者本机的 Clash 端口，别人换端口就永远走错门，
+探不到还会弹框）。现在 `DetectProxy()` 按顺序试三个来源，**探到才**给客户端加
+`--proxy-server` 并设 `HTTP_PROXY/HTTPS_PROXY/ALL_PROXY`（大小写各一组）+ 清空 `NO_PROXY`：
+
+| 顺序 | 来源 | 说明 |
+|---|---|---|
+| 1 | `tools\local-proxy.txt` | 本机专用，一行 `[host:]port`。**不进 git、不进 zip**（`.gitignore` 已排除） |
+| 2 | Windows 系统代理 | 只在 `HKCU\...\Internet Settings` 的 `ProxyEnable=1` 时采信 `ProxyServer` |
+| 3 | `tools/detect-proxy.ps1` | 一次 PowerShell 扫 7897/7890/7891/10808/10809/1080/8080/2080/8888，打印第一个在监听的 |
+
+**探不到就一个网络设置都不动**：不设环境变量、不加 `--proxy-server`、不弹框，
+只在 `%TEMP%\antigravity-launch.log` 写一行 `proxy = none`。
+端口列表只是候选，不是"必须"：要加候选改 `tools/detect-proxy.ps1` 的 `$ports`；
+只想给自己这台机器指定端口，写 `tools\local-proxy.txt`（别提交）。
+
 ## 3. 现场移植
 
 官方更新到 N+1、本仓库的 N+1 包还没发布时，用**新版本官方 asar 做底座，把旧版本的译文搬过去**。
@@ -154,6 +171,7 @@ tools/porting-rules.json        人工补译规则（官方新增文案、代码
 tools/port/port.js              现场移植器：新版官方底座 + 旧版译文
 tools/port_to.py                移植器（纯 Python 版，本地开发用）
 tools/selfheal.ps1              自愈：比对 .zh-pack 标记后自动补回
+tools/detect-proxy.ps1          本地代理端口探测（候选端口清单在这里，别写进启动器）
 tools/maintainer/zh_merge.py    asar 读写 / integrity 重算 / 打包自检
 tools/auto-update-toggle.ps1    官方 autoCheckForUpdates 开关
 tools/find-install-dir.ps1      自定义安装目录兜底（注册表 UninstallString 反推）
@@ -162,7 +180,7 @@ tools/redact_screenshots.py     README 截图打码
 scripts/                        维护链（扫描 / 回归 / 合并 / 重打包 / 发版）
 build/work-*/                   各版本的官方原始件与换装成品
 一键安装汉化.bat                 安装（识别版本 + 备份 + 建快捷方式）
-启动反重力.vbs                   无黑窗启动器：设代理环境变量、查自愈状态后拉起客户端
+启动反重力.vbs                   无黑窗启动器：探到本地代理才设代理、查自愈状态后拉起客户端
 关闭自动更新.bat / 恢复自动更新.bat
 一键恢复官方英文.bat             回滚
 ```

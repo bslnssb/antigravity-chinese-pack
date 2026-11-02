@@ -2,8 +2,9 @@ Option Explicit
 ' ============================================================
 '  Antigravity 中文版启动器（无黑窗口）
 '
-'  作用与 start-antigravity-proxy.cmd 相同：设置代理环境变量后拉起
-'  Antigravity.exe。区别是用 wscript 运行，不会弹出 cmd 窗口。
+'  作用与 start-antigravity-proxy.cmd 相同：探测到本地代理就设置代理
+'  环境变量后拉起 Antigravity.exe，探不到就不碰任何网络设置。
+'  区别是用 wscript 运行，不会弹出 cmd 窗口。
 '
 '  为什么要设环境变量：界面进程认 --proxy-server 参数，但负责登录换
 '  token、调用 AI 的语言服务器（Go 进程）只认 HTTPS_PROXY，必须由父
@@ -27,12 +28,19 @@ Option Explicit
 '    标记判断。标记匹配就直接启动，不碰任何文件
 '  - 不匹配才 -Heal：本地有成品就复制，没有就去 GitHub Releases 直连下载
 '  - 自愈失败一律"放行启动"，绝不因为补丁问题让应用打不开
+'
+'  2026-11-03 代理不再写死：
+'  - 原来这里写死了作者本机的 Clash 端口，而且探不到
+'    还会弹框问"仍要启动吗"，别人装在不同端口只会一脸困惑
+'  - 现在探到才设 --proxy-server 和环境变量；探不到就不设、不弹框，只写日志
 ' ============================================================
 
-Const PROXY = "http://127.0.0.1:7897"
-Const PROXY_HOST = "127.0.0.1"
-Const PROXY_PORT = 7897
 Const EXE_NAME = "Antigravity.exe"
+
+' 代理不是"必须有的东西"：探到本地代理才设，探不到就一个网络设置都不动。
+' 探测顺序见 DetectProxy()：tools\local-proxy.txt（本机专用，不进发布包）
+' → 系统代理（注册表 ProxyServer）→ tools\detect-proxy.ps1 扫一批常见端口。
+Const PROXY_HINT_FILE = "local-proxy.txt"
 
 Dim fso, sh, env, tmpDir, here
 Set fso = CreateObject("Scripting.FileSystemObject")
@@ -67,31 +75,29 @@ If AppRunning() Then
     WScript.Quit 0
 End If
 
-' ---------- 3. 代理端口检查（只提示，不强制退出）----------
-If Not PortOpen(PROXY_HOST, PROXY_PORT) Then
-    Dim ans
-    ans = MsgBox("检测到 " & PROXY_HOST & ":" & PROXY_PORT & " 没有在监听，" & vbCrLf & _
-                 "Clash Verge Rev 可能没有启动。" & vbCrLf & vbCrLf & _
-                 "这种情况下启动 Antigravity 会完全没有网络" & vbCrLf & _
-                 "（登录、对话都会失败）。" & vbCrLf & vbCrLf & _
-                 "仍要启动吗？", vbQuestion + vbYesNo + vbDefaultButton2, "Antigravity 中文版")
-    If ans <> vbYes Then
-        Log "user cancelled (proxy port closed)"
-        WScript.Quit 0
-    End If
-    Log "WARN proxy port closed, user chose to continue"
-End If
+' ---------- 3. 找本地代理（探不到就什么都不动）----------
+' 以前这里写死了作者本机的 Clash 端口——别人用别的端口就永远走错门；
+' 而且探不到还会弹框问「仍要启动吗」。现在探到才设，探不到就不设也不弹框。
+Dim proxyUrl
+proxyUrl = DetectProxy()
 
 ' ---------- 4. 环境变量 ----------
-env("HTTP_PROXY")  = PROXY
-env("HTTPS_PROXY") = PROXY
-env("ALL_PROXY")   = PROXY
-env("http_proxy")  = PROXY
-env("https_proxy") = PROXY
-env("all_proxy")   = PROXY
-' 必须清空：NO_PROXY 若覆盖 googleapis.com，等于没设代理
-env("NO_PROXY")    = ""
-env("no_proxy")    = ""
+' 只有探到代理才设。探不到时一个都不写：既不用自己猜的端口，也不覆盖
+' 用户自己配好的东西（Windows 上给环境变量写空值等于删除）。
+If proxyUrl <> "" Then
+    Log "proxy = " & proxyUrl
+    env("HTTP_PROXY")  = proxyUrl
+    env("HTTPS_PROXY") = proxyUrl
+    env("ALL_PROXY")   = proxyUrl
+    env("http_proxy")  = proxyUrl
+    env("https_proxy") = proxyUrl
+    env("all_proxy")   = proxyUrl
+    ' 必须清空：NO_PROXY 若覆盖 googleapis.com，等于没设代理
+    env("NO_PROXY")    = ""
+    env("no_proxy")    = ""
+Else
+    Log "proxy = none（没探到本地代理，网络设置一律不动）"
+End If
 ' 必须彻底移除：非空时 exe 会以纯 Node 模式运行，静默退出、无窗口、无日志
 ClearEnv "ELECTRON_RUN_AS_NODE"
 ClearEnv "NODE_OPTIONS"
@@ -163,7 +169,8 @@ End If
 
 ' ---------- 6. 启动 ----------
 Dim cmd
-cmd = """" & exePath & """ --proxy-server=""" & PROXY & """"
+cmd = """" & exePath & """"
+If proxyUrl <> "" Then cmd = cmd & " --proxy-server=""" & proxyUrl & """"
 
 Dim args, i
 args = ""
@@ -211,6 +218,134 @@ End If
 ' ============================================================
 '  辅助函数
 ' ============================================================
+
+' ---------- 代理探测 ----------
+' 顺序：本机提示文件 -> 系统代理 -> 扫一批常见端口。全都探不到就返回 ""，
+' 调用方据此"一个网络设置都不动"。这里不许把任何一个端口当成"必须"，
+' 只允许把常见端口当候选（列表在 tools\detect-proxy.ps1 里维护）。
+'
+' tools\local-proxy.txt（不进 git、不进发布包）：一行 [host:port] 或 7897，
+' 给端口不常见的用户用。写错/代理没开都不会报错，只是继续往下探。
+Function DetectProxy()
+    Dim hint, raw, t, url, h, p, lines
+    DetectProxy = ""
+
+    ' 1) 本机提示文件
+    hint = here & "\tools\" & PROXY_HINT_FILE
+    raw = ""
+    If fso.FileExists(hint) Then
+        On Error Resume Next
+        Set lines = fso.OpenTextFile(hint, 1, False)
+        Do While Not lines.AtEndOfStream
+            t = Trim(lines.ReadLine())
+            If t <> "" And Left(t, 1) <> "#" Then
+                raw = t
+                Exit Do
+            End If
+        Loop
+        lines.Close
+        If Err.Number <> 0 Then Err.Clear
+        On Error GoTo 0
+    End If
+    url = NormProxy(raw)
+    If url <> "" Then
+        SplitHostPort url, h, p
+        If PortOpen(h, p) Then
+            Log "proxy: local-proxy.txt -> " & url
+            DetectProxy = url
+            Exit Function
+        End If
+        Log "proxy: local-proxy.txt 写的 " & url & " 没在监听，继续探测"
+    End If
+
+    ' 2) 系统代理（Clash 打开"系统代理"时最准，端口往往不是默认那个）
+    On Error Resume Next
+    raw = ""
+    If sh.RegRead("HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings\ProxyEnable") = 1 Then
+        raw = sh.RegRead("HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings\ProxyServer")
+    End If
+    If Err.Number <> 0 Then
+        raw = ""
+        Err.Clear
+    End If
+    On Error GoTo 0
+    url = NormProxy(raw)
+    If url <> "" Then
+        SplitHostPort url, h, p
+        If PortOpen(h, p) Then
+            Log "proxy: 系统代理 -> " & url
+            DetectProxy = url
+            Exit Function
+        End If
+        Log "proxy: 系统代理 " & url & " 没在监听，继续探测"
+    End If
+
+    ' 3) 扫常见端口：一次 PowerShell 走完，别一个端口起一个进程
+    Dim ps1, out
+    ps1 = here & "\tools\detect-proxy.ps1"
+    If fso.FileExists(ps1) Then
+        out = Trim(RunHidden("powershell -NoProfile -ExecutionPolicy Bypass -File """ & ps1 & """"))
+        If IsNumeric(out) Then
+            url = "http://127.0.0.1:" & CStr(CLng(out))
+            Log "proxy: 端口扫描 -> " & url
+            DetectProxy = url
+            Exit Function
+        End If
+    End If
+
+    DetectProxy = ""
+End Function
+
+' 把各种代理写法归一成 http://host:port：
+' 7897 / 127.0.0.1:7897 / http://127.0.0.1:7897 / "http=h:p;https=h:p" 都认。
+Function NormProxy(s)
+    Dim t, parts, i, b, key, cand
+    NormProxy = ""
+    t = Trim(CStr(s))
+    If t = "" Then Exit Function
+    If InStr(1, t, "=", 1) > 0 Then
+        cand = ""
+        parts = Split(t, ";")
+        For i = 0 To UBound(parts)
+            b = InStr(1, parts(i), "=", 1)
+            If b > 0 Then
+                key = LCase(Trim(Left(parts(i), b - 1)))
+                If key = "http" Then
+                    cand = Trim(Mid(parts(i), b + 1))
+                    Exit For
+                End If
+                If cand = "" Then cand = Trim(Mid(parts(i), b + 1))
+            End If
+        Next
+        If cand = "" Then Exit Function
+        t = cand
+    End If
+    If LCase(Left(t, 7)) = "http://" Then t = Mid(t, 8)
+    If LCase(Left(t, 8)) = "https://" Then t = Mid(t, 9)
+    b = InStr(1, t, "/", 1)
+    If b > 0 Then t = Left(t, b - 1)
+    t = Trim(t)
+    If t = "" Then Exit Function
+    If IsNumeric(t) Then t = "127.0.0.1:" & t
+    If InStr(1, t, ":", 1) = 0 Then Exit Function
+    NormProxy = "http://" & t
+End Function
+
+' 从 http://host:port 拆出 host 和 port（VBScript 参数默认 ByRef）
+Sub SplitHostPort(url, h, p)
+    Dim t, b, i, ps
+    h = "127.0.0.1"
+    p = 0
+    t = Trim(url)
+    b = InStr(1, t, "://", 1)
+    If b > 0 Then t = Mid(t, b + 3)
+    i = InStrRev(t, ":")
+    If i = 0 Then Exit Sub
+    h = Trim(Left(t, i - 1))
+    ps = Trim(Mid(t, i + 1))
+    If IsNumeric(ps) Then p = CLng(ps)
+    If h = "" Then h = "127.0.0.1"
+End Sub
 
 Function FindExe()
     Dim cands, i, p

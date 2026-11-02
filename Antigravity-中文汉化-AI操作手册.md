@@ -427,8 +427,10 @@ foreach ($f in "<materials>\*.js") {
   出口 IP**，而不是只换国家。模型生成端点为
   `https://daily-cloudcode-pa.googleapis.com/v1internal:streamGenerateContent?alt=sse`
   （日志里只记 URL 不记响应；连续出现带 ResponseID 的该行即生成正常）。
-- 启动脚本已加固：启动前清 `ELECTRON_RUN_AS_NODE`；代理端口 7897 不通时打印告警
-  （代理死了会导致完全无网，比没代理更糟）。
+- 启动脚本已加固：启动前清 `ELECTRON_RUN_AS_NODE`；代理改为**自动探测**
+  （tools\local-proxy.txt → 系统代理 → tools\detect-proxy.ps1 扫常见端口），探到才设
+  `--proxy-server` 与环境变量，探不到就一个网络设置都不动（2026-11-03 起不再写死端口、
+  也不再弹框告警，只在 %TEMP%\antigravity-launch.log 记一行）。
 
 ---
 
@@ -448,8 +450,8 @@ Antigravity-汉化\
 │  └─ app.asar.zh-2.25                     ← 构建产物
 ├─ packs\
 │  └─ Antigravity-Chinese-Pack-v2.24.0.zip ← 汉化包原版（更新后重打用）
-├─ start-antigravity-proxy.cmd             ← 带代理环境变量启动（桌面快捷方式「Antigravity 中文版」指向它；
-│                                             已内置：启动前清 ELECTRON_RUN_AS_NODE、代理端口不通时告警）
+├─ start-antigravity-proxy.cmd             ← （旧·本机专用，已被 启动反重力.vbs 取代）写死代理端口启动
+├─ 启动反重力.vbs                          ← 无黑窗启动器：探到本地代理才设代理 + 查自愈后拉起客户端
 └─ 一键恢复官方英文.bat                       ← 一键回滚（读 resources\app.asar.backup）
 ```
 
