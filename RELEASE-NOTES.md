@@ -22,9 +22,29 @@
 | 脚本 | 作用 |
 |---|---|
 | `scripts/scan_ui.js` | 连运行中客户端的 CDP，把 DOM 可见文本按「未翻译 / 半中半英」分类 |
-| `scripts/test_engine.js` | 引擎离线回归，31 个用例 |
+| `scripts/test_engine.js` | 引擎离线回归，41 个用例 |
 | `scripts/merge_dict.py` | 把 `tools/patches/ui-extra.json` 合并进引擎（幂等，带冲突检查） |
 | `scripts/rebuild_preload.py` | 只替换 asar 里的 `preload.js`，秒级重打包 |
+
+### 追加修复（同日第二轮）：顶栏与历史会话
+
+- **顶栏 `Workspace` 菜单**：按整串词条译作「工作区」。整串匹配只认完全相等的文本节点，
+  不会影响 `Use Workspace Settings`、`在默认体验与 Project 4K 体验之间选择` 这类长句
+- **侧边栏会话时间标记**：`10d / 3h / 2w / 45m` 这类相对时间改由正则转成
+  「10 天前 / 3 小时前 / 2 周前 / 45 分钟前」，只对「数字 + 单个单位」的极短串生效
+- **「历史会话」设置面板**：`Permission Settings`、面板副标题
+  `Agent settings and permissions for conversations outside of projects.`、
+  以及 `Also includes … when working in these conversations` 补译
+- 顺带补齐 `Search Conversations`（搜索会话）、`New Conversation`、`No conversations yet`、
+  `Untitled` 等侧边栏零散文案
+
+> 踩坑记录：`Also includes` 那句在 DOM 里被 `<a>` 拆成三个文本节点，整句词典永远对不上。
+> 但它**不能**放进 `phrase` 表——`phrase` 在短语替换阶段跑，会把
+> `Also includes global settings when working` 这种完整句提前啃成「此外还包含 global settings …」。
+> 只能按「整节点恰好相等」放在正则区锚定。
+
+回归用例扩到 **41 条**，新增 `Use Workspace Settings` 与
+`Also includes global settings when working` 两条反向保护用例。
 
 补词只改 `tools/patches/ui-extra.json`：`exact` 放单词（整串匹配），`phrase` 放多词短语（带边界句内替换）。
 
