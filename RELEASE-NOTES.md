@@ -1,5 +1,33 @@
 # 更新日志
 
+## v2.28.2 修订（2026-11-02）：翻译覆盖面修复
+
+三处真实缺陷，全部有回归用例钉死：
+
+- **短词啃长词**：词条替换是裸 `replaceAll`，没有词边界，`Close→关闭` 把
+  `Reopen Closed Tab` 翻成 `Reopen 关闭d Tab`。同类还有 `Open→Opened`、
+  `Copy→Copyright`、`Edit→Editor`、`Install→Installation`。
+  现在每条编译成带边界的正则（首尾为字母数字时要求前后非字母数字）
+- **单字词条参与句内替换**：`Browser` 译作「浏览器设置」，于是
+  `Built-in Browser Settings` 被啃成 `Built-in 浏览器设置`；`Legal Help`→`Legal 帮助`、
+  `Open File Search`→`打开 File 搜索` 同理。现在纯单词词条**只做整串相等匹配**，
+  永不进入句子中间
+- **设置面板缺 127 条文案**：补齐 `权限预设`、`计划审核策略`、`执行`、`内置/外部浏览器设置`、
+  `意见反馈`、`反馈类型`、`问题报告`、`账号与计费`、`显示选项`、`置顶会话`、`快捷键导航` 等；
+  带变量的无障碍标签（`Shortcut Ctrl+K for …`、`Select project, current: …`、
+  `Rules: 4,515 tokens`）改为模板处理，插值部分递归翻译
+
+配套新增维护链（改完必跑）：
+
+| 脚本 | 作用 |
+|---|---|
+| `scripts/scan_ui.js` | 连运行中客户端的 CDP，把 DOM 可见文本按「未翻译 / 半中半英」分类 |
+| `scripts/test_engine.js` | 引擎离线回归，31 个用例 |
+| `scripts/merge_dict.py` | 把 `tools/patches/ui-extra.json` 合并进引擎（幂等，带冲突检查） |
+| `scripts/rebuild_preload.py` | 只替换 asar 里的 `preload.js`，秒级重打包 |
+
+补词只改 `tools/patches/ui-extra.json`：`exact` 放单词（整串匹配），`phrase` 放多词短语（带边界句内替换）。
+
 ## v2.28.2（2026-11-01）
 
 ### 补丁包内容

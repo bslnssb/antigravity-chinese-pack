@@ -274,8 +274,36 @@ python tools/port_to.py --version 2.29.0
 ## 汉化覆盖范围
 
 - 应用菜单 / 托盘菜单 / 安装向导 / 主进程提示，全部完成
-- 界面层内置 **1283 条运行时翻译字典**（设置、自动化、插件、技能、账户等界面文案）
+- 界面层内置 **1283 条短语 + 500 条整串词条** 的运行时翻译字典（设置、自动化、插件、技能、账户等界面文案）
 - 登录页、设置页、主界面、侧栏均为中文；专有名词（Antigravity、Gemini、Google）保持原样
+- 代码块、编辑器内容、用户数据（会话标题、邮箱、文件名）不翻译
+
+### 覆盖率是怎么保证的（不是靠截图目测）
+
+这套翻译最容易出的问题不是「漏翻」，而是**翻了半截**：`Built-in Browser Settings`
+变成 `Built-in 浏览器设置`，`Legal Help` 变成 `Legal 帮助`。原因是英语的短词是长词的
+前缀，替换时一旦不看词边界就会啃掉别人。
+
+现在有三道检查，改完必跑：
+
+```
+node   scripts/scan_ui.js              扫描运行中客户端的 DOM，列出未翻译 / 半中半英
+node   scripts/test_engine.js          引擎回归（31 个用例，钉死上面这类事故）
+python scripts/merge_dict.py           把 tools/patches/ui-extra.json 合并进引擎
+python scripts/rebuild_preload.py      只替换 asar 里的 preload，秒级重打包
+```
+
+补词写进 `tools/patches/ui-extra.json` 就行，不用动引擎源码：
+
+- `exact` —— 整串完全相等才替换。**单词一律放这里**，它绝不进句子中间
+- `phrase` —— 句内局部替换，带词边界。只放多词短语
+
+引擎本身的两条铁律：
+
+1. 每个词条编译成带边界的正则（首尾是字母数字时要求前后不是字母数字），
+   所以 `Close` 不会命中 `Closed`
+2. 纯单词词条不参与句内替换，只做整串匹配，所以 `Browser`（译作「浏览器设置」）
+   不会把 `Built-in Browser Settings` 啃成 `Built-in 浏览器设置`
 
 ## 仓库结构
 
