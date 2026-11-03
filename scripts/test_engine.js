@@ -73,12 +73,125 @@ const CASES = [
     ['Also includes global settings when working', '在当前项目中工作时，同时继承并应用全局设置'],
 ];
 
+// M6：总开关。第一项是开关状态：on = 正常翻译，off = 整段原样返回（连前后空格都不动）
+const SWITCH_CASES = [
+    ['on', 'Settings', '设置'],
+    ['on', 'New Conversation', '新建会话'],
+    ['on', '  Settings  ', '  设置  '],
+    ['off', 'Settings', 'Settings'],
+    ['off', 'New Conversation', 'New Conversation'],
+    ['off', '  Settings  ', '  Settings  '],
+];
+
+// M6：启动时读 localStorage['agyZh']，只有 '0' 才算关（其它值/没写过都算开）
+const STORAGE_CASES = [
+    ['<unset>', true],
+    ['1', true],
+    ['0', false],
+];
+
+// M6：切换后要写回 localStorage，刷新页面还保持
+const WRITE_CASES = [
+    ['off', '0'],
+    ['on', '1'],
+];
+
+// M6：用户内容区不翻。第一项是命中容器（选择器 / <editable> / class），第二项是是否应跳过
+const EXCLUDE_CASES = [
+    ['.surface-composer', true],
+    ['.surface-composer-card', true],
+    ['.no-focus-agent-input', true],
+    ['[data-testid="agent-input-box"]', true],
+    ['[data-testid="voice-dock-input"]', true],
+    ['[data-testid="conversation-view"]', true],
+    ['[data-testid="user-message-bubble"]', true],
+    ['[data-testid="voice-user-message"]', true],
+    ['<editable>', true],
+    ['.notranslate', true],
+    ['.toolbar-button', false],
+    ['[data-testid="side-panel"]', false],
+];
+
+const ENG = globalThis.__agyEngine;
+if (!ENG || typeof ENG.setEnabled !== 'function') {
+    console.error('引擎未导出 __agyEngine（M6 开关接口缺失）');
+    process.exit(2);
+}
+
+function withStorage(map, fn) {
+    const prev = globalThis.localStorage;
+    globalThis.localStorage = {
+        getItem: (k) => (Object.prototype.hasOwnProperty.call(map, k) ? map[k] : null),
+        setItem: (k, v) => { map[k] = String(v); },
+        removeItem: (k) => { delete map[k]; },
+    };
+    try {
+        return fn();
+    } finally {
+        if (prev === undefined) delete globalThis.localStorage;
+        else globalThis.localStorage = prev;
+    }
+}
+
+// 极简元素替身：只实现 isExcluded 用到的 tagName / classList / isContentEditable / closest / parentElement
+function fakeEl(options) {
+    const el = {
+        tagName: options.tag || 'DIV',
+        classList: { contains: (c) => (options.classes || []).includes(c) },
+        isContentEditable: !!options.editable,
+        closest(sel) {
+            const hit = sel.split(',').some((s) => (options.matches || []).includes(s));
+            return hit ? el : (options.parent || null);
+        },
+        parentElement: options.parent || null,
+    };
+    return el;
+}
+
+let total = 0;
 let fail = 0;
+
+function report(ok, label) {
+    total++;
+    if (!ok) fail++;
+    console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}`);
+}
+
 for (const [en, want] of CASES) {
     const got = T(en);
-    const ok = got === want;
-    if (!ok) fail++;
-    console.log(`${ok ? 'PASS' : 'FAIL'}  ${JSON.stringify(en)} -> ${JSON.stringify(got)}${ok ? '' : `  期望 ${JSON.stringify(want)}`}`);
+    report(got === want, `${JSON.stringify(en)} -> ${JSON.stringify(got)}${got === want ? '' : `  期望 ${JSON.stringify(want)}`}`);
 }
-console.log(`\n${CASES.length - fail}/${CASES.length} 通过`);
+
+ENG.setEnabled(true);
+for (const [state, en, want] of SWITCH_CASES) {
+    ENG.setEnabled(state === 'on');
+    const got = T(en);
+    report(got === want, `[开关 ${state}] ${JSON.stringify(en)} -> ${JSON.stringify(got)}${got === want ? '' : `  期望 ${JSON.stringify(want)}`}`);
+}
+ENG.setEnabled(true);
+
+for (const [stored, wantOn] of STORAGE_CASES) {
+    const map = stored === '<unset>' ? {} : { [ENG.storageKey]: stored };
+    const on = withStorage(map, () => ENG.readEnabled());
+    report(on === wantOn, `localStorage['${ENG.storageKey}']=${JSON.stringify(stored)} -> 汉化应${wantOn ? '开' : '关'}，实际${on ? '开' : '关'}`);
+}
+
+for (const [state, wantStored] of WRITE_CASES) {
+    const map = {};
+    withStorage(map, () => ENG.setEnabled(state === 'on'));
+    const got = map[ENG.storageKey];
+    report(got === wantStored, `切到 ${state} -> localStorage['${ENG.storageKey}']=${JSON.stringify(got)}`);
+}
+ENG.setEnabled(true);
+
+for (const [mark, wantSkip] of EXCLUDE_CASES) {
+    const el = mark === '<editable>'
+        ? fakeEl({ editable: true })
+        : fakeEl({ matches: [mark], classes: mark.startsWith('.') ? [mark.slice(1)] : [] });
+    const node = { nodeType: 3, parentElement: el };
+    const skipped = ENG.isExcluded(node) === true;
+    report(skipped === wantSkip, `${JSON.stringify(mark)} -> ${skipped ? '跳过' : '翻译'}${skipped === wantSkip ? '' : `  期望${wantSkip ? '跳过' : '翻译'}`}`);
+}
+
+console.log(`\n${total - fail}/${total} 通过`);
 process.exit(fail ? 1 : 0);

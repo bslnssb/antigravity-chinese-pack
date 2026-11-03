@@ -70,6 +70,77 @@
 
 
 
+        // ===== M6：总开关 =====
+        // localStorage 'agyZh' === '0' => 用户手动关掉汉化：不装 observer、不翻译，整段原样返回。
+        const ZH_STORAGE_KEY = 'agyZh';
+
+        const ZH_TOAST_ID = 'agy-zh-hint';
+
+        let engineEnabled = true;
+
+        let zhObserver = null;
+
+        let zhTimer = null;
+
+        let zhRafId = null;
+
+        function readEngineEnabled() {
+
+            try {
+
+                if (typeof localStorage === 'undefined') return true;
+
+                return localStorage.getItem(ZH_STORAGE_KEY) !== '0';
+
+            } catch (_) {
+
+                return true;
+
+            }
+
+        }
+
+        function writeEngineEnabled(on) {
+
+            try {
+
+                if (typeof localStorage !== 'undefined') localStorage.setItem(ZH_STORAGE_KEY, on ? '1' : '0');
+
+            } catch (_) {}
+
+        }
+
+        // M6：用户内容区不翻。容器名来自线上 v2.28.2 渲染层 main.js（data-testid）与实测 DOM（class），不靠猜。
+        const EXCLUDE_SELECTOR = [
+
+            '.surface-composer',
+
+            '.surface-composer-card',
+
+            '.no-focus-agent-input',
+
+            '[data-testid="agent-input-box"]',
+
+            '[data-testid="voice-dock-composer"]',
+
+            '[data-testid="voice-dock-input"]',
+
+            '[data-testid="conversation-view"]',
+
+            '[data-testid="subagent-tab-conversation"]',
+
+            '[data-testid="user-input-step"]',
+
+            '[data-testid="user-message-bubble"]',
+
+            '[data-testid="voice-user-message"]',
+
+            '[data-testid="voice-agent-message"]',
+
+            '[data-testid="pending-user-messages"]'
+
+        ].join(',');
+
         function isExcluded(node) {
 
             let el = node.nodeType === 1 ? node : node.parentElement;
@@ -77,6 +148,17 @@
             if (node.nodeType === 3 && el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT')) {
 
                 return true;
+
+            }
+
+            // M6：用户输入框 / 聊天与编辑消息区整块跳过（宁可少翻角标，也不动用户自己的内容）
+            if (el) {
+
+                try {
+
+                    if (typeof el.closest === 'function' && el.closest(EXCLUDE_SELECTOR)) return true;
+
+                } catch (_) {}
 
             }
 
@@ -90,9 +172,10 @@
 
                 }
 
+                // M6：可编辑区（输入框/聊天框）默认不翻
                 if (el.isContentEditable) {
 
-                    return false;
+                    return true;
 
                 }
 
@@ -125,6 +208,8 @@
 
 
         function translateText(text) {
+
+            if (!engineEnabled) return text;
 
             if (!text || typeof text !== 'string' || !text.trim()) return text;
 
@@ -958,11 +1043,28 @@
 
         globalThis.__agyTranslateText = translateText;
 
+        // M6：给离线用例/排查用的小接口（浏览器里也留着，方便手动开关）
+        globalThis.__agyEngine = {
+
+            storageKey: ZH_STORAGE_KEY,
+
+            isEnabled: () => engineEnabled,
+
+            setEnabled: setEngineEnabled,
+
+            readEnabled: readEngineEnabled,
+
+            isExcluded: isExcluded,
+
+            excludeSelector: EXCLUDE_SELECTOR
+
+        };
+
 
 
         function translateNode(node) {
 
-            if (!node) return;
+            if (!engineEnabled || !node) return;
 
             try {
 
@@ -1062,7 +1164,7 @@
 
         function sweep() {
 
-            if (isTranslating || !document || !document.body) return;
+            if (!engineEnabled || isTranslating || !document || !document.body) return;
 
             try {
 
@@ -1082,35 +1184,156 @@
 
 
 
-        function initObserver() {
+        function showZhHint(msg) {
 
-            sweep();
+            try {
 
-            let rafId = null;
+                if (typeof document === 'undefined' || !document.body) return;
 
-            const observer = new MutationObserver(() => {
+                let box = document.getElementById(ZH_TOAST_ID);
 
-                if (!isTranslating && !rafId) {
+                if (!box) {
 
-                    rafId = requestAnimationFrame(() => {
+                    box = document.createElement('div');
 
-                        rafId = null;
+                    box.id = ZH_TOAST_ID;
 
-                        sweep();
+                    box.className = 'notranslate';
 
-                    });
+                    box.setAttribute('translate', 'no');
+
+                    box.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:2147483647;' +
+                        'background:rgba(24,24,27,.92);color:#f4f4f5;font:13px/1.4 -apple-system,Segoe UI,sans-serif;' +
+                        'padding:8px 14px;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.28);pointer-events:none;' +
+                        'opacity:0;transition:opacity .18s ease;white-space:nowrap';
+
+                    document.body.appendChild(box);
 
                 }
 
-            });
+                box.textContent = msg;
 
-            if (document.body) {
+                requestAnimationFrame(() => { box.style.opacity = '1'; });
 
-                observer.observe(document.body, { childList: true, subtree: true });
+                if (box.__agyHideTimer) clearTimeout(box.__agyHideTimer);
+
+                box.__agyHideTimer = setTimeout(() => {
+
+                    box.style.opacity = '0';
+
+                    setTimeout(() => { try { box.remove(); } catch (_) {} }, 220);
+
+                }, 1600);
+
+            } catch (_) {}
+
+        }
+
+        function startTranslation() {
+
+            if (!engineEnabled || typeof document === 'undefined' || !document.body) return;
+
+            sweep();
+
+            if (!zhObserver) {
+
+                zhObserver = new MutationObserver(() => {
+
+                    if (!isTranslating && !zhRafId) {
+
+                        zhRafId = requestAnimationFrame(() => {
+
+                            zhRafId = null;
+
+                            sweep();
+
+                        });
+
+                    }
+
+                });
+
+                zhObserver.observe(document.body, { childList: true, subtree: true });
 
             }
 
-            setInterval(sweep, 1000);
+            if (!zhTimer) zhTimer = setInterval(sweep, 1000);
+
+        }
+
+        function stopTranslation() {
+
+            if (zhObserver) {
+
+                try { zhObserver.disconnect(); } catch (_) {}
+
+                zhObserver = null;
+
+            }
+
+            if (zhTimer) {
+
+                clearInterval(zhTimer);
+
+                zhTimer = null;
+
+            }
+
+        }
+
+        function setEngineEnabled(on) {
+
+            engineEnabled = !!on;
+
+            writeEngineEnabled(engineEnabled);
+
+            if (engineEnabled) {
+
+                startTranslation();
+
+                showZhHint('汉化已开启');
+
+            } else {
+
+                stopTranslation();
+
+                showZhHint('汉化已暂停 · Ctrl+Shift+L 恢复（刷新页面也保持关闭）');
+
+            }
+
+        }
+
+        function bindSwitchHotkey() {
+
+            if (typeof document === 'undefined' || !document.addEventListener) return;
+
+            document.addEventListener('keydown', (e) => {
+
+                if (!e || e.metaKey || e.altKey || !e.ctrlKey || !e.shiftKey) return;
+
+                const key = String(e.key || '').toLowerCase();
+
+                if (key !== 'l' && e.code !== 'KeyL') return;
+
+                e.preventDefault();
+
+                e.stopPropagation();
+
+                setEngineEnabled(!engineEnabled);
+
+            }, true);
+
+        }
+
+        function initObserver() {
+
+            bindSwitchHotkey();
+
+            engineEnabled = readEngineEnabled();
+
+            if (!engineEnabled) return;
+
+            startTranslation();
 
         }
 

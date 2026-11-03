@@ -112,7 +112,7 @@ flowchart TD
 
 ```
 node   scripts/scan_ui.js              连运行中客户端的 CDP，列出未翻译 / 半中半英
-node   scripts/test_engine.js          引擎回归（41 个用例，钉死这类事故）
+node   scripts/test_engine.js          引擎回归（64 个用例，钉死这类事故 + 开关/排除区）
 python scripts/merge_dict.py           把 tools/patches/ui-extra.json 合并进引擎
 python scripts/rebuild_preload.py      只替换 asar 里的 preload，秒级重打包
 python scripts/check_docs.py           文档 ↔ 代码对表（机制被改名/删掉就报错）
@@ -147,6 +147,33 @@ node   scripts/shot_settings.js        截设置面板若干页到 build/shots/�
 扫描脚本读 `%APPDATA%\Antigravity\DevToolsActivePort` 拿实时端口，端口每次启动都变。
 写自动化时注意：启动客户端和扫描必须在**同一条命令**内跑完，否则进程会被清理，
 表现为 `ECONNREFUSED`（不是包的问题）。
+
+### 4.1 总开关与「不翻用户内容」（M6）
+
+**总开关**：`localStorage['agyZh'] === '0'` 视为用户手动关掉汉化——不装 `MutationObserver`、
+不跑 `sweep`、`translateText` 直接原样返回（连首尾空格都不动）。`Ctrl+Shift+L` 切换并把
+`'1'` / `'0'` 写回 localStorage，切完在窗口底部浮一条 1.6 秒的轻提示，**不弹窗、不打断输入**。
+选项跨刷新保留；要彻底回英文走 `一键恢复官方英文.bat`（它连 preload 一起换掉，比开关更彻底）。
+
+**不翻的区域**：`isExcluded(node)` 先用 `closest()` 命中 `EXCLUDE_SELECTOR` 就整块跳过；
+`el.isContentEditable` 也跳过——M6 之前这里是 `return false`，等于用户输入框里的字也照翻。
+
+容器名不是猜的，两条来源：跑起来的客户端 DOM（实测 `DIV#antigravity.agentSidePanelInputBox.surface-composer`），
+和线上 v2.28.2 渲染层 `main.js` 里的 `data-testid`。**渲染层 UI 代码不在 `app.asar` 里**，
+是本地服务 `https://127.0.0.1:7705/` 现场发的 `main.js`（v2.28.2 = 10,652,379 B），
+所以查容器名要起客户端、读 DevTools 端口 dump DOM，或把 `main.js` 存下来 grep `data-testid`；
+全盘搜 asar 是搜不到的。
+
+| 区域 | 选择器 |
+|---|---|
+| 对话输入框 | `.surface-composer` / `.surface-composer-card` / `.no-focus-agent-input` / `[data-testid="agent-input-box"]` |
+| 语音输入 | `[data-testid="voice-dock-composer"]` / `[data-testid="voice-dock-input"]` |
+| 会话与消息 | `[data-testid="conversation-view"]` / `subagent-tab-conversation` / `user-input-step` / `user-message-bubble` / `pending-user-messages` |
+| 语音消息 | `[data-testid="voice-user-message"]` / `[data-testid="voice-agent-message"]` |
+
+取舍是**宁可少翻角标，也不动用户自己写的内容**。要加容器改引擎里的 `EXCLUDE_SELECTOR`，
+同时往 `scripts/test_engine.js` 的 `EXCLUDE_CASES` 补一条——那里用假元素（只实现
+`tagName`/`classList`/`isContentEditable`/`closest`）离线测，不用开客户端。
 
 ## 5. 自己给新版本做包
 
