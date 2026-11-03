@@ -22,7 +22,7 @@
 #   11  读不到版本号
 #   20  该版本还没有汉化包（Release 404）
 #   21  下载失败（网络 / 代理）
-#   22  包损坏或解压失败
+#   22  包损坏或解压失败 / SHA256 不符
 #   30  没有写权限（装在 Program Files，当前账户改不了）
 #       → 唯一办法：右键 一键安装汉化.bat →「以管理员身份运行」（只需一次）
 #   31  app.asar 被占用（Antigravity 正在运行）或覆盖时被拒
@@ -474,6 +474,27 @@ if (-not (Test-Path $payload)) {
     Write-Result 22 'error' ("汉化成品不存在：{0}" -f $payload) $local.source
 }
 $paySize = (Get-Item $payload).Length
+
+# ---- 哈希校验：包里带了本版 sha256 表就比对（下载半截、缓存被改坏都能拦住）----
+# 现场移植的产物是本机现算的，没有可比对象，跳过。
+if ($local.source -ne 'port') {
+    $pin = Join-Path (Join-Path $PackDir 'tools/patches') ("sha256-$Version.json")
+    if (Test-Path $pin) {
+        $want = ''
+        try {
+            $want = ([string](Get-Content $pin -Raw -Encoding UTF8 | ConvertFrom-Json).asar_sha256).Trim()
+        } catch {
+            $want = ''
+        }
+        if ($want) {
+            $got = (Get-FileHash $payload -Algorithm SHA256).Hash.ToLower()
+            if ($got -ne $want.ToLower()) {
+                Write-Result 22 'error' (('汉化文件校验失败（SHA256 不符），包可能是下载或解压时不完整。' +
+                    '删掉这个缓存后重试：{0}') -f $payload) $local.source
+            }
+        }
+    }
+}
 
 # ---- 写权限预检 ----
 $probe = Join-Path $resDir '.zh-write-probe'

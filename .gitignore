@@ -11,6 +11,8 @@ _st_*.json
 *.asar.*
 build/*.asar*
 packs/*.zip
+# 试打包 / 复现用的 zip 不放进来（正式产物在 packs/ 且也不入库）
+build/*.zip
 # 重打包前的旧 zip 留档
 build/_old-packs/
 

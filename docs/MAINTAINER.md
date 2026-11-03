@@ -168,12 +168,23 @@ python scripts/package_dist.py --version 2.29.0   # → packs/Antigravity-Chines
 python scripts/upload_release.py --version 2.29.0 # 删同名旧资产并上传
 ```
 
+`package_dist.py` 除了打 zip，还会：
+
+1. 打印 **zip 和 asar 两个 SHA256**（asar 是包内汉化文件），照抄进 Release 正文；
+2. 写 `tools/patches/sha256-<版本>.json`（`asar_size` + `asar_sha256`）并**打进包里**——
+   自愈在覆盖 `app.asar` 前会拿它比对，下载半截、缓存被改坏的包会被拦下（退出码 22），
+   不会装上去才崩。这张表是随版本固化的，**别手改**；成品变了就重新跑一次。
+   包里没有这张表（老版本包）时不拦，向后兼容。
+3. 用 `docs/release-body.md` 模板渲染出 `build/_release-body-v<版本>.md`（`build/_*` 不进 git），
+   正文里已经有「本版变化」和「下载与校验」两节，发版前补上本版变化即可。
+
 ## 6. 仓库结构
 
 ```
 tools/preload-engine.js         固定的翻译引擎（词典 + DOM 翻译器）
 tools/patches/ui-extra.json     补词表（exact / phrase 两个分区）
 tools/patches/memory-*.json     「旧版官方原文 → 中文」替换对，移植用的素材
+tools/patches/sha256-*.json     各版 asar 的尺寸 + SHA256（package_dist.py 生成，随包发布）
 tools/porting-rules.json        人工补译规则（官方新增文案、代码拼接片段）
 tools/port/port.js              现场移植器：新版官方底座 + 旧版译文
 tools/port_to.py                移植器（纯 Python 版，本地开发用）
@@ -186,6 +197,7 @@ tools/find-install-dir.ps1      自定义安装目录兜底（注册表 Uninstal
 tools/make-shortcut.ps1         生成桌面「反重力（中文版）」快捷方式
 tools/redact_screenshots.py     README 截图打码
 scripts/                        维护链（扫描 / 回归 / 合并 / 重打包 / 发版）
+docs/release-body.md            Release 正文模板（package_dist.py 用它渲染草稿）
 build/work-*/                   各版本的官方原始件与换装成品
 一键安装汉化.bat                 安装（识别版本 + 备份 + 建快捷方式）
 启动反重力.vbs                   无黑窗启动器：探到本地代理才设代理、查自愈状态后拉起客户端
