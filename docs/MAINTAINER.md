@@ -108,15 +108,21 @@ flowchart TD
 变成 `Built-in 浏览器设置`，`Legal Help` 变成 `Legal 帮助`。英语短词是长词的前缀，
 替换时一旦不看词边界就会啃掉别人。
 
-改完必跑的四道检查：
+改完必跑的五道检查：
 
 ```
 node   scripts/scan_ui.js              连运行中客户端的 CDP，列出未翻译 / 半中半英
 node   scripts/test_engine.js          引擎回归（41 个用例，钉死这类事故）
 python scripts/merge_dict.py           把 tools/patches/ui-extra.json 合并进引擎
 python scripts/rebuild_preload.py      只替换 asar 里的 preload，秒级重打包
+python scripts/check_docs.py           文档 ↔ 代码对表（机制被改名/删掉就报错）
 node   scripts/shot_settings.js        截设置面板若干页到 build/shots/，供 README 用
 ```
+
+`check_docs.py` 是**防"文档还说成立"**的那一道：它把文档里的承诺逐条到代码里找证据——
+启动器的 `RevertPort` 回滚、`zh-port-skip` 熔断、自愈的 7 个退出码、`.zh-pack` 标记、
+恢复脚本删标记、安装脚本的写探针、`PAYLOAD_FILES` 里的每个文件、用例数、代理探测、
+哈希校验、Release 模板占位符。任一句已经不成立就退 1，别绕过它，去改代码或改文档。
 
 > 截图脚本截图后要手工糊掉左下角账号区（含邮箱），别把个人信息带进仓库。
 
@@ -197,6 +203,7 @@ tools/find-install-dir.ps1      自定义安装目录兜底（注册表 Uninstal
 tools/make-shortcut.ps1         生成桌面「反重力（中文版）」快捷方式
 tools/redact_screenshots.py     README 截图打码
 scripts/                        维护链（扫描 / 回归 / 合并 / 重打包 / 发版）
+scripts/check_docs.py           文档 ↔ 代码对表：声称的机制必须真在代码里（退 1 = 有不符）
 docs/release-body.md            Release 正文模板（package_dist.py 用它渲染草稿）
 build/work-*/                   各版本的官方原始件与换装成品
 一键安装汉化.bat                 安装（识别版本 + 备份 + 建快捷方式）
