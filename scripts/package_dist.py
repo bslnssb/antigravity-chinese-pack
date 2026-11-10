@@ -24,10 +24,14 @@
 import argparse
 import hashlib
 import json
+import re
 import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+
+# docs/release-body.md 里留给发版人写的内容；还在就说明没写过，可以整篇重新生成
+PLACEHOLDER = "（发版前在这里写本版变化，别留着这行）"
 
 PAYLOAD_FILES = [
     "一键安装汉化.bat",
@@ -90,6 +94,20 @@ def write_release_body(ver: str, out: Path, out_size: int, out_sha: str,
     )
     dest = ROOT / "build" / f"_release-body-v{ver}.md"
     dest.parent.mkdir(parents=True, exist_ok=True)
+
+    # 已经手写过「本版变化」的草稿不能被重新生成冲掉——踩过一次：
+    # 发完版又跑了一次打包，线上正文变回了占位符。这里只刷新校验数字。
+    if dest.is_file():
+        old = dest.read_text(encoding="utf-8")
+        if PLACEHOLDER not in old and out.name in old:
+            for name, size, sha in ((out.name, out_size, out_sha),
+                                    (f"app.asar.zh-{ver}", asar_size, asar_sha)):
+                pat = re.compile(r"(\|\s*`" + re.escape(name) + r"`\s*\|\s*)\d+(\s*字节\s*\|\s*)`[0-9a-f]{64}`")
+                old = pat.sub(lambda m: f"{m.group(1)}{size}{m.group(2)}`{sha}`", old)
+            dest.write_text(old, encoding="utf-8", newline="\n")
+            print("正文草稿：保留已写的「本版变化」，只刷新校验数字")
+            return dest
+
     dest.write_text(body, encoding="utf-8", newline="\n")
     return dest
 
