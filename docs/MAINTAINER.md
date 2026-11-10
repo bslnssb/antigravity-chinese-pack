@@ -135,7 +135,8 @@ node   scripts/test_engine.js          引擎回归（91 个用例，钉死这�
 python scripts/merge_dict.py           把 tools/patches/ui-extra.json 合并进引擎
 python tools/port/port.js --base build/app.asar.original-<ver> --out build/app.asar.zh-<ver> --ref <ver> --packdir .
 python scripts/check_docs.py           文档 ↔ 代码对表（机制被改名/删掉就报错）
-node   scripts/shot_settings.js        截设置面板若干页到 build/shots/，供 README 用
+node   scripts/shot_readme.js          截主界面 + 设置面板到 build/readme_shots/（README 用图）
+python tools/redact_screenshots.py     压到 2000px 宽并落到 docs/screenshots/
 ```
 
 > **11-11 事故**：2.31.0 发版时只跑了 `scan_ui.js`（它只扫当前停留的那一屏）和引擎回归，
@@ -152,7 +153,13 @@ node   scripts/shot_settings.js        截设置面板若干页到 build/shots/�
 恢复脚本删标记、安装脚本的写探针、`PAYLOAD_FILES` 里的每个文件、用例数、代理探测、
 哈希校验、Release 模板占位符。任一句已经不成立就退 1，别绕过它，去改代码或改文档。
 
-> 截图脚本截图后要手工糊掉左下角账号区（含邮箱），别把个人信息带进仓库。
+> **截图别把个人信息带进仓库**：`shot_readme.js` 在按快门前注入一段 CSS，把首页问候语
+> （带账户名）和设置面板左下角账号卡片（头像/用户名/邮箱）设成 `visibility:hidden`，截完移除。
+> 别改成事后糊图——旧图按 2100x1353 手写坐标做 14px 马赛克，界面一改版坐标就全废，
+> 而且漏糊一次就会泄露邮箱（2026-11-02 就漏过一次）。
+> 截图前把窗口拉大没用（Electron 不吃 `Emulation` 之外的窗口尺寸），脚本用
+> `Emulation.setDeviceMetricsOverride` 把视口临时放大到 1600x1250，设置面板才能一屏放下、
+> 不被滚动条截断；1150 高度实测会切掉「语音模式」下半截。
 
 补词只改 `tools/patches/ui-extra.json`，不动引擎源码：
 
@@ -264,7 +271,7 @@ tools/auto-update-toggle.ps1    官方 autoCheckForUpdates 开关
 tools/find-install-dir.ps1      自定义安装目录兜底（注册表 UninstallString 反推）；
                                 -SetFile 把结果按 936 写成 set 语句给 bat call
 tools/make-shortcut.ps1         生成桌面「反重力（中文版）」快捷方式
-tools/redact_screenshots.py     README 截图打码
+tools/redact_screenshots.py     README 截图压图落盘（隐私在 shot_readme.js 里遮）
 scripts/                        维护链（扫描 / 回归 / 合并 / 重打包 / 发版）
 scripts/check_docs.py           文档 ↔ 代码对表：声称的机制必须真在代码里（退 1 = 有不符）
 docs/release-body.md            Release 正文模板（package_dist.py 用它渲染草稿）

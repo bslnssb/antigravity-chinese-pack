@@ -11,9 +11,11 @@
 
 ![主界面](docs/screenshots/main.png)
 
-设置面板同样全部中文：
+设置面板同样全部中文（截图取自官方 2.31.0）：
 
 ![设置 · 常规设置](docs/screenshots/settings-general.png)
+
+![设置 · 外观设置](docs/screenshots/settings-appearance.png)
 
 ![设置 · 应用设置](docs/screenshots/settings-app.png)
 
