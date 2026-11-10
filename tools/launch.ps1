@@ -44,21 +44,20 @@ function Invoke-Selfheal([string]$mode) {
     return @($out | ForEach-Object { "$_" })
 }
 
-function Test-GoogleReachable([string]$proxyUrl) {
+function Test-GoogleReachable([string]$proxyUrl, [int]$TimeoutMs = 6000, [int]$Tries = 2) {
     # 只看登录端点能不能握上手。连不上时客户端会停在英文的 OAuth 报错页，
     # 与其让人对着天书猜，不如在日志里先说清楚是代理的问题。
     # 注意：4xx / 5xx 都算「网络通了」，只有连接超时、TLS 握手失败才算不通。
     # 用 GET 不用 HEAD：部分代理对 HEAD 会一直挂到超时，会把好代理误判成坏的。
-    # 302 / 4xx / 5xx 都算「网络通了」，只有连接超时、TLS 握手失败才算不通；
     # 偶发抖动再试一次，避免拿一次超时去吓用户。
-    for ($i = 0; $i -lt 2; $i++) {
+    for ($i = 0; $i -lt $Tries; $i++) {
         try {
             $req = [System.Net.HttpWebRequest]::Create('https://accounts.google.com/')
             $req.Method = 'GET'
             $req.AllowAutoRedirect = $false
             $req.UserAgent = 'Mozilla/5.0'
-            $req.Timeout = 6000
-            $req.ReadWriteTimeout = 6000
+            $req.Timeout = $TimeoutMs
+            $req.ReadWriteTimeout = $TimeoutMs
             $req.Proxy = [System.Net.WebProxy]::new($proxyUrl, $true)
             $resp = $req.GetResponse()
             $code = [int]$resp.StatusCode
@@ -137,11 +136,44 @@ if ($state -eq 'need') {
 }
 
 # 3. 代理：探到才设，探不到一个网络设置都不动
+#    探测顺序由 detect-proxy.ps1 决定：local-proxy.txt -> 系统代理 -> 扫常见端口。
+#    扫端口得到的只是「猜测」，必须自己证明能用才采信，否则宁可不设代理 ——
+#    把 8080 上的开发服务器当成代理，比不设代理更糟。
 $proxy = ''
+$proxySrc = 'none'
+$proxyNote = ''
+$cands = @()
 if (Test-Path -LiteralPath $detect) {
-    $p = & powershell -NoProfile -ExecutionPolicy Bypass -File $detect 2>$null
-    $p = "$p".Trim()
-    if ($p -match '^\d+$') { $proxy = "http://127.0.0.1:$p" }
+    $det = @(& powershell -NoProfile -ExecutionPolicy Bypass -File $detect -Detailed 2>$null | ForEach-Object { "$_" })
+    $proxySrc = Get-Field $det 'SOURCE'
+    $rawList = Get-Field $det 'CANDIDATES'
+    if ($rawList) {
+        $cands = @($rawList.Split(',') | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    }
+}
+if (-not $proxySrc) { $proxySrc = 'none' }
+Write-Log ("proxy detect: source={0} candidates={1}" -f $proxySrc, ($cands -join ' | '))
+
+if ($proxySrc -eq 'file' -or $proxySrc -eq 'system') {
+    # 用户自己写的 / 系统里配的，属于明确意图，直接用
+    if ($cands.Count -gt 0) { $proxy = $cands[0] }
+} elseif ($proxySrc -eq 'scan') {
+    # 扫描来的：HTTP 代理要能连到 Google 才算数；SOCKS5 握手成功就足以认定是代理
+    # 每次健康检查最多 3 秒，所以最多试 2 个，别让启动等成常态。
+    $healthTried = 0
+    foreach ($c in $cands) {
+        if ($c -like 'http*') {
+            if ($healthTried -ge 2) { break }
+            $healthTried++
+            if (Test-GoogleReachable $c 3000 1) { $proxy = $c; break }
+            Write-Log "scan candidate $c 连不上 Google，跳过"
+            $proxyNote = '候选端口连不上 Google，已跳过'
+        } else {
+            $proxy = $c
+            $proxyNote = 'SOCKS5 代理，未做连通性检查'
+            break
+        }
+    }
 }
 
 # 本地回环必须直连：登录引导页、CDP、客户端后台与本地服务之间都走 127.0.0.1。
@@ -157,17 +189,26 @@ if ($proxy) {
     }
     [Environment]::SetEnvironmentVariable('NO_PROXY', $noProxyEnv, 'Process')
     [Environment]::SetEnvironmentVariable('no_proxy', $noProxyEnv, 'Process')
-    Write-Log "proxy = $proxy (no_proxy = loopback/LAN)"
-    $netOk = Test-GoogleReachable $proxy
-    if ($netOk) {
-        Write-Log 'proxy health: Google 登录端点可达'
+    Write-Log ("proxy = {0} (from {1}, no_proxy = loopback/LAN)" -f $proxy, $proxySrc)
+    if ($proxy -like 'http*') {
+        $netOk = Test-GoogleReachable $proxy
+        if ($netOk) {
+            Write-Log 'proxy health: Google 登录端点可达'
+        } else {
+            Write-Log 'WARN: 代理连不上 Google 登录端点。客户端会停在「设置账户失败」页；请在代理软件里切换可用节点，或开启 TUN / 全局模式接管后台进程。'
+        }
     } else {
-        Write-Log 'WARN: 代理连不上 Google 登录端点。客户端会停在「设置账户失败」页；请在代理软件里切换可用节点，或开启 TUN / 全局模式接管后台进程。'
+        Write-Log 'proxy health: SOCKS5 不做 HTTP 探测（.NET 5.1 不支持 SOCKS 代理对象）'
     }
 } else {
-    Write-Log 'proxy = none（直连；国内网络下 Google 登录大概率超时）'
+    if ($proxyNote) {
+        Write-Log ("proxy = none（{0}）" -f $proxyNote)
+    } else {
+        Write-Log 'proxy = none（没探到代理；直连时 Google 登录会超时，这属于网络环境问题）'
+    }
 }
 Write-Output "PROXY=$proxy"
+Write-Output "PROXY_SOURCE=$proxySrc"
 Write-Output "PROXY_HEALTH=$netOk"
 
 # 3.5 已经开着的窗口不会重新加载 app.asar：官方更新或刚补完中文时，
