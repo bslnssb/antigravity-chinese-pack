@@ -59,11 +59,27 @@ if (-not $ExePath) {
 $desktop = [Environment]::GetFolderPath('Desktop')
 $lnkPath = Join-Path $desktop '反重力（中文版）.lnk'
 
-$sh = New-Object -ComObject WScript.Shell
+# ---- 生成 .lnk ----
+# 目标改成 PowerShell 启动器，不再指向 wscript.exe + VBS：
+# 部分环境会拦截脚本宿主 / COM，VBS 启动器表现为「双击没反应、连日志都没有」。
+# PowerShell 版不依赖 WSH，快捷方式点下去才真的能起来。
+$launchPs1 = Join-Path (Split-Path -Parent $VbsPath) 'tools\launch.ps1'
+if (-not (Test-Path -LiteralPath $launchPs1)) {
+    Write-Output "SKIP: $launchPs1 not found"
+    exit 1
+}
+
+try {
+    $sh = New-Object -ComObject WScript.Shell
+} catch {
+    # COM 被拦也不算失败：安装脚本另外会在桌面写一个 .cmd 兜底入口
+    Write-Output ("SKIP: COM unavailable, the .cmd fallback still works: " + $_.Exception.Message)
+    exit 1
+}
 $lnk = $sh.CreateShortcut($lnkPath)
-$lnk.TargetPath        = Join-Path $env:WINDIR 'System32\wscript.exe'
-$lnk.Arguments         = '"' + $VbsPath + '"'
-$lnk.WorkingDirectory  = Split-Path -Parent $VbsPath
+$lnk.TargetPath        = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
+$lnk.Arguments         = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $launchPs1 + '"'
+$lnk.WorkingDirectory  = Split-Path -Parent $launchPs1
 if ($ExePath) {
     $lnk.IconLocation = "$ExePath,0"
 }

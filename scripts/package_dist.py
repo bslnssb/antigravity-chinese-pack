@@ -35,6 +35,8 @@ PAYLOAD_FILES = [
     "关闭自动更新.bat",
     "恢复自动更新.bat",
     "启动反重力.vbs",
+    "启动反重力.cmd",
+    "tools/launch.ps1",
     "tools/auto-update-toggle.ps1",
     "tools/find-install-dir.ps1",
     "tools/detect-proxy.ps1",

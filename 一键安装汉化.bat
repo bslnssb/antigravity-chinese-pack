@@ -130,47 +130,46 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo  [OK] Chinese pack applied for version %IVER%.
+echo  [OK] 已为 %IVER% 打上中文包。
 echo.
-rem ---- 5b. stamp the .zh-pack marker (lets the launcher skip re-patching) ----
+goto :finish
+
+:finish
+rem ---- 5b. 写 .zh-pack 标记；版本对不上时由自愈在这里现场移植 ----
+rem     成功路径只是重复覆盖一次（无害），不匹配路径会把译文搬到新版文件上。
 if exist "%HERE%\tools\selfheal.ps1" (
     powershell -NoProfile -ExecutionPolicy Bypass -File "%HERE%\tools\selfheal.ps1" -Heal -Resources "%RT%" -PackDir "%HERE%" >nul 2>&1
 )
-rem ---- 6. desktop shortcut (best-effort) ----
-if exist "%HERE%\启动反重力.vbs" (
-    powershell -NoProfile -ExecutionPolicy Bypass -File "%HERE%\tools\make-shortcut.ps1" -VbsPath "%HERE%\启动反重力.vbs" -ExePath "%RT%\..\Antigravity.exe"
-    echo.
+rem ---- 6. 桌面启动入口：两条路，任一成功都能双击启动 ----
+rem 6a. 带官方图标的 .lnk（需要 COM；被安全软件拦了也不影响 6b）
+if exist "%HERE%\tools\make-shortcut.ps1" (
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%HERE%\tools\make-shortcut.ps1" -VbsPath "%HERE%\启动反重力.vbs" -ExePath "%RT%\..\Antigravity.exe" >nul 2>&1
 )
-echo  Start Antigravity from the desktop shortcut (反重力（中文版）)
-echo  or by double-clicking 启动反重力.vbs in this folder.
-echo  The first screen takes 30-60 seconds to hydrate
-echo  before Chinese text appears - that is normal, do not judge too early.
+rem 6b. 纯文本兜底：完全不依赖脚本宿主 / COM，桌面上一定有一个能点的入口
+set "ENTRY=%USERPROFILE%\Desktop\反重力（中文版）.cmd"
+> "%ENTRY%" echo @echo off
+>> "%ENTRY%" echo start "" powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "%HERE%\tools\launch.ps1"
+echo  [OK] 桌面启动入口已建好：反重力（中文版）
+echo.
+echo  以后双击桌面上的「反重力（中文版）」启动；也可以双击本文件夹里的 启动反重力.cmd
+echo  首次打开等 30-60 秒中文才全部出现，属正常，别太早下结论。
 echo.
 echo  ------------------------------------------------------------
-echo  IMPORTANT: the next official update will overwrite app.asar and
-echo  delete app.asar.backup, wiping this patch. To stop that for good,
-echo  close Antigravity and run:  关闭自动更新.bat
-echo  (reversible any time with 恢复自动更新.bat)
+echo  官方更新会整目录覆盖，把中文冲掉（不是装错了）。
+echo  用「反重力（中文版）」启动会自动补回来；想彻底不被打断，
+echo  先完全退出 Antigravity，再双击 关闭自动更新.bat
+echo  （随时可用 恢复自动更新.bat 撤销）。
 echo  ------------------------------------------------------------
 echo.
-echo  To roll back, run the restore script in this folder.
+echo  想回到英文原版：双击 一键恢复官方英文.bat
 echo.
 pause
 exit /b 0
 
 :nopayload
-echo  [ERROR] No patch file matching this Antigravity version.
-if defined IVER echo          Installed: %IVER%
+echo  [提示] 没有和这一版完全对应的现成中文包，这是正常的（官方比本包新）。
+echo         不会把旧文件强加到新客户端上，也就不会卡在加载界面。
+echo         下面照常建好桌面启动入口。第一次启动时，会把已有译文搬到你
+echo         这版官方文件上，界面继续是中文（首次多等几秒）。
 echo.
-echo  Files found in this folder:
-for %%F in ("%HERE%\app.asar.zh-*") do echo          %%~nxF
-echo.
-echo  This pack only patches the exact version it was built for.
-echo  Options:
-echo    1. Download the release matching your version from the project page
-echo    2. Rebuild the patch yourself - needs the full repo + Python 3:
-echo         python tools\port_to.py --version ^<installed ver^>
-echo    3. Do NOT force an older pack onto a newer client - it hangs on Loading
-echo.
-pause
-exit /b 1
+goto :finish

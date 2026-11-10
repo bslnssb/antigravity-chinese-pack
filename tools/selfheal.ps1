@@ -228,8 +228,11 @@ function Invoke-Download([string]$url, [string]$dest) {
         try {
             $req = [System.Net.HttpWebRequest]::Create($url)
             $req.UserAgent = 'Antigravity-Chinese-Pack'
-            $req.Timeout = 20000
-            $req.ReadWriteTimeout = 60000
+            # 下载只是「顺便看看有没有现成包」，不该拖慢启动：本地没成品时
+            # 紧接着就要现场移植。以前 20s+60s × 代理/直连两轮，GitHub 连不上
+            # 会白等近 1 分钟（实测 51s）；404 本来就秒回，短超时不影响它。
+            $req.Timeout = 8000
+            $req.ReadWriteTimeout = 10000
             $req.AllowAutoRedirect = $true
             if ($p) { $req.Proxy = New-Object System.Net.WebProxy($p) } else { $req.Proxy = $null }
 
@@ -425,6 +428,7 @@ if ($portSkipped) {
 }
 
 $local = Find-LocalPayload $Version
+$downloadNote = ''
 if (-not $local) {
     $url = "https://github.com/$RepoOwner/$RepoName/releases/download/v$Version/Antigravity-Chinese-Pack-v$Version.zip"
     $cache = Get-CacheDir
@@ -432,29 +436,36 @@ if (-not $local) {
     $tmpZip = "$zipPath.part"
     if (Test-Path $tmpZip) { Remove-Item $tmpZip -Force -ErrorAction SilentlyContinue }
 
+    # 下载只是"有现成包就顺便拿"，不是移植的前置条件。
+    # 以前只有 HTTP 404 才会现场移植，网络超时 / GitHub 连不上 / 代理异常
+    # 会直接退 21 把人推回英文——国内网络下「版本对不上也能用」就形同虚设。
     $res = $null
     try {
         $res = Invoke-Download $url $tmpZip
     } catch {
-        if (Test-Path $tmpZip) { Remove-Item $tmpZip -Force -ErrorAction SilentlyContinue }
-        Write-Result 21 'error' ("下载汉化包失败：{0}" -f $_.Exception.Message) 'download'
+        $downloadNote = $_.Exception.Message
     }
-    if ($res -eq 'notfound') {
-        if (Test-Path $tmpZip) { Remove-Item $tmpZip -Force -ErrorAction SilentlyContinue }
-        # 现成包没有 → 现场移植：以新版官方 asar 为底座，把手里旧版本的译文搬过去。
-        # 这样功能是新版的、界面还是中文，而不是把人推回英文。
-        $script:PortError = ''
-        $ported = Invoke-Port $Version $resDir
-        if ($ported) {
-            $local = @{ path = $ported; source = 'port' }
-        } else {
-            $why = $script:PortError
-            if (-not $why) { $why = '未知原因' }
-            Write-Result 20 'error' ("v{0} 的汉化包还没有发布，现场移植也没成功：{1}" -f $Version, $why) 'download'
-        }
-    } else {
+    if ($res -eq 'ok' -and (Test-Path $tmpZip)) {
         Move-Item $tmpZip $zipPath -Force
         $local = @{ path = $zipPath; source = 'download' }
+    } else {
+        if (Test-Path $tmpZip) { Remove-Item $tmpZip -Force -ErrorAction SilentlyContinue }
+    }
+}
+
+# 本地没有成品、下载也没拿到（404 / 超时 / 被墙 / 解压失败）：一律现场移植。
+# 以新版官方 asar 为底座，把手里旧版本的译文搬过去，功能是新版的、界面还是中文。
+if (-not $local) {
+    $script:PortError = ''
+    $ported = Invoke-Port $Version $resDir
+    if ($ported) {
+        $local = @{ path = $ported; source = 'port' }
+    } else {
+        $why = $script:PortError
+        if (-not $why) { $why = '未知原因' }
+        $tail = ''
+        if ($downloadNote) { $tail = "（下载也没成功：$downloadNote）" }
+        Write-Result 20 'error' ("v{0} 的汉化包还没发布，现场移植也没成功：{1}{2}" -f $Version, $why, $tail) 'port'
     }
 }
 

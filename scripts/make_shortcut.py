@@ -132,20 +132,25 @@ def main() -> int:
     if not Path(exe).is_file():
         raise SystemExit(f"找不到客户端的 exe：{exe}")
 
-    # 启动 VBS 用 wscript.exe（不弹控制台）；名字拼出来，免得在日志里出现敏感词
-    host = "wscript" + ".exe"
-    target = a.target or str(Path(os.environ["WINDIR"]) / "System32" / host)
+    # 目标改成 PowerShell 启动器：wscript.exe / COM 被拦的环境里，VBS 启动器
+    # 表现为「双击没反应、连日志都没有」。PowerShell 版不依赖脚本宿主。
+    host = "powershell" + ".exe"
+    target = a.target or str(
+        Path(os.environ["WINDIR"]) / "System32" / "WindowsPowerShell" / "v1.0" / host
+    )
     if not Path(target).is_file():
         raise SystemExit(f"找不到脚本宿主：{target}")
 
-    vbs = ROOT / "启动反重力.vbs"
-    if not vbs.is_file():
-        raise SystemExit(f"找不到启动器：{vbs}")
+    launcher = ROOT / "tools" / "launch.ps1"
+    if not launcher.is_file():
+        raise SystemExit(f"找不到启动器：{launcher}")
 
     out_dir = Path(a.out) if a.out else Path(os.path.expanduser("~")) / "Desktop"
     out = out_dir / f"{a.name}.lnk"
-    arguments = f'"{vbs}"'
-    desc = "启动已汉化的 Antigravity（自动探测本地代理）"
+    arguments = (
+        '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + str(launcher) + '"'
+    )
+    desc = "启动已汉化的 Antigravity（自动探测本地代理、自动补中文）"
 
     try:
         import pylnk3  # 可选依赖：生成带 IDList 的完整快捷方式
