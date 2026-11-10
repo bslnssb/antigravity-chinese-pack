@@ -91,7 +91,7 @@ def _exit_codes():
     sh = read(SELFHEAL)
     codes = sorted({int(c) for c in re.findall(r"Write-Result\s+(\d+)\s", sh)} - {0})
     bad = []
-    expected = {10, 11, 20, 21, 22, 30, 31}
+    expected = {10, 11, 20, 22, 30, 31}
     missing = expected - set(codes)
     if missing:
         bad.append(f"selfheal.ps1 少了这些退出码：{sorted(missing)}")
@@ -131,6 +131,61 @@ def _marker():
     # 必须真有 del ... .zh-pack（改名成 .zh-packx 之类的半截吻合不算）
     if not re.search(r"\bdel\b[^\r\n]*\.zh-pack\b", bat, re.I):
         bad.append("一键恢复官方英文.bat 不删 .zh-pack（恢复后会被自愈补回中文）")
+    return bad
+
+
+@check("安装脚本：版本不匹配时照常建启动入口，不再致命退出")
+def _installer_version_mismatch():
+    bat = read(INSTALL_BAT, "gbk")
+    bad = []
+    if bat.count("goto :finish") < 2:
+        bad.append("版本不匹配分支没有跳到收尾步骤（快捷方式 / 标记会被整段跳过）")
+    m = re.search(r"^:nopayload\s*$", bat, re.M)
+    seg = bat[m.start():] if m else ""
+    if seg and "exit /b 1" in seg:
+        bad.append(":nopayload 仍 exit /b 1，用户拿不到桌面启动入口（issue #1）")
+    if "反重力（中文版）.cmd" not in bat:
+        bad.append("不生成桌面 .cmd 兜底入口（脚本宿主被拦时用户什么都点不了）")
+    return bad
+
+
+@check("自愈：下载失败也照样现场移植，不把用户推回英文")
+def _port_fallback():
+    sh = read(SELFHEAL)
+    bad = []
+    if "Write-Result 21 'error'" in sh:
+        bad.append("下载失败仍直接退 21，现场移植不会执行（国内网络下等于没有兜底）")
+    if "Invoke-Port $Version $resDir" not in sh:
+        bad.append("现场移植调用不见了")
+    if "if (-not $local)" not in sh:
+        bad.append("没有「拿不到现成包就移植」的分支")
+    return bad
+
+
+@check("启动器：有不用脚本宿主的 PowerShell 版，且随包发布")
+def _launcher_fallback():
+    bad = []
+    if not (ROOT / "tools" / "launch.ps1").is_file():
+        bad.append("缺 tools/launch.ps1（wscript 被拦时整条启动链断掉）")
+    if not (ROOT / "启动反重力.cmd").is_file():
+        bad.append("缺 启动反重力.cmd 兜底入口")
+    pkg = read(PACKAGE)
+    if '"tools/launch.ps1"' not in pkg:
+        bad.append("打包清单没带 tools/launch.ps1")
+    if '"启动反重力.cmd"' not in pkg:
+        bad.append("打包清单没带 启动反重力.cmd")
+    lp = read(ROOT / "tools" / "launch.ps1")
+    # 值不能带引号：Start-Process 会原样传给 Chromium，代理静默失效、登录就直连超时
+    if "$argList += ('--proxy-server=\"' + $proxy" in lp:
+        bad.append("启动器给 --proxy-server 的值加了引号，Chromium 会当成无效地址")
+    if "'--proxy-server=' + $proxy" not in lp:
+        bad.append("启动器没有正确传递 --proxy-server")
+    if "SetEnvironmentVariable('NO_PROXY', '', 'Process')" in lp:
+        bad.append("NO_PROXY 为空，本地回环请求会被送去代理、登录引导页可能失败")
+    if "Test-GoogleReachable" not in lp:
+        bad.append("缺 Google 登录端点健康探测，登录失败时用户只能看到英文天书")
+    if "--proxy-bypass-list" not in lp:
+        bad.append("缺 --proxy-bypass-list，本地 127.0.0.1 服务可能被代理拦截")
     return bad
 
 

@@ -37,10 +37,10 @@ flowchart TD
     C -->|否| E[判定被官方更新覆盖]
     E --> F{本地有该版本成品?}
     F -->|有| G[备份官方 asar 然后覆盖为中文]
-    F -->|没有| H[从 Releases 下载对应版本]
-    H --> I{有现成包?}
-    I -->|有| G
-    I -->|没有| J[现场移植: 新官方底座 + 旧版译文]
+    F -->|没有| H[尝试从 Releases 下载对应版本]
+    H --> I{拿到了?}
+    I -->|拿到| G
+    I -->|404 / 超时 / 被墙 / 解不开| J[现场移植: 新官方底座 + 旧版译文]
     J --> K{移植成功?}
     K -->|成功| G
     K -->|失败| L[提示原因 可选先用英文]
@@ -57,10 +57,14 @@ flowchart TD
 | 10 | 找不到安装目录 | 提示后照常启动 |
 | 11 | 读不到客户端版本号 | 提示后照常启动 |
 | 20 | 该版本无包且现场移植失败 | 提示「先看英文」后启动 |
-| 21 | 下载失败 | 提示后启动 |
 | 22 | 包解不开 / 大小或哈希不符 | 提示后启动 |
 | 30 | 无写权限（装在 `C:\Program Files`，当前账户改不了） | 提示右键「以管理员身份运行」`一键安装汉化.bat`，然后照常启动 |
 | 31 | `app.asar` 被占用（客户端没退干净）或覆盖被拒 | 提示先彻底退出，再照常启动 |
+
+下载失败**不再单独退出**：以前只有 HTTP 404 才会现场移植，网络超时或 GitHub 连不上
+会直接退 21 把用户推回英文。现在只要本地没有该版本成品，无论下载是 404、超时、
+被墙还是解不开，都会先试现场移植；移植也失败才报 `20`。这是「版本对不上也能用」
+在国内网络下能不能成立的关键，别再改回只认 404。
 
 `30` 是 `Program Files` 场景下最常见的一条：Windows 默认不让普通账户改
 `C:\Program Files` 下的文件，**唯一办法是提权跑一次安装脚本**。`一键安装汉化.bat`
@@ -93,7 +97,7 @@ flowchart TD
 - **不要求用户装 Python / Node**：借 Antigravity 自带的 Electron 当运行时
   （`ELECTRON_RUN_AS_NODE=1`，本机实测 v24.21.0），几百行 JS 就够
 - **译文来源**：包内 `tools/patches/memory-*.json`，是「旧版官方原文 → 旧版中文」的替换对。
-  本仓库用 2.28.2 的记忆做产物，与手工维护的成品**逐字节等价**
+  本仓库用当前版本的记忆做产物（2.31.0 包内是 `memory-2.31.0.json`），与手工维护的成品**逐字节等价**
   （唯一差异是 CRLF/LF 归一化后为 0）
 - **只替换字符串字面量**，并做单词边界检查——否则 `isExiting` 会被换成一个语法合法、
   运行时才报 `ReferenceError` 的标识符。打包前还会断言代码区不含中文
@@ -112,7 +116,7 @@ flowchart TD
 
 ```
 node   scripts/scan_ui.js              连运行中客户端的 CDP，列出未翻译 / 半中半英
-node   scripts/test_engine.js          引擎回归（64 个用例，钉死这类事故 + 开关/排除区）
+node   scripts/test_engine.js          引擎回归（67 个用例，钉死这类事故 + 开关/排除区 + 登录失败页文案）
 python scripts/merge_dict.py           把 tools/patches/ui-extra.json 合并进引擎
 python scripts/rebuild_preload.py      只替换 asar 里的 preload，秒级重打包
 python scripts/check_docs.py           文档 ↔ 代码对表（机制被改名/删掉就报错）
@@ -175,6 +179,11 @@ node   scripts/shot_settings.js        截设置面板若干页到 build/shots/�
 同时往 `scripts/test_engine.js` 的 `EXCLUDE_CASES` 补一条——那里用假元素（只实现
 `tagName`/`classList`/`isContentEditable`/`closest`）离线测，不用开客户端。
 
+> 2.31.0 起官方新增了 27 个内嵌浏览器 / webview 模块。含可见文案的新文件列在
+> `tools/porting-rules.json` 的 `extraFiles`，补词统一放 `globalPairs`（只在字符串字面量内、
+> 带词边界替换）；只有真的命中替换的文件才会写回 asar。**内部错误与调试日志不要翻**，
+> 那是给排查问题看的。
+
 ## 5. 自己给新版本做包
 
 先看 Releases 有没有对应版本（首选，双击即装）。没有的话，30 秒能做出一份——
@@ -197,7 +206,7 @@ python tools/port_to.py --version 2.29.0
 发版：
 
 ```bash
-python scripts/package_dist.py --version 2.29.0   # → packs/Antigravity-Chinese-Pack-v2.29.0.zip
+python scripts/package_dist.py --version 2.31.0   # → packs/Antigravity-Chinese-Pack-v2.29.0.zip
 python scripts/upload_release.py --version 2.29.0 # 删同名旧资产并上传
 ```
 
@@ -275,7 +284,7 @@ powershell -ExecutionPolicy Bypass -File tools\selfheal.ps1 -Check
 输出 `官方已更新到 x.y.z，需要重新打中文补丁` 说明标记已不匹配，
 把 `-Check` 换成 `-Heal` 立刻补好。
 
-文件大小对照：官方 2.28.2 约 4.6 MB，汉化版约 4.9 MB（多出来的是翻译引擎）。
+文件大小对照：官方 2.31.0 约 5.3 MB，汉化版约 5.6 MB（多出来的是翻译引擎）。
 
 ### 8.1 写 bat 时容易踩的两个坑
 
