@@ -31,6 +31,11 @@ FILES = [
     "settings-app.png",
 ]
 
+# 成品文件名带版本号：GitHub 的图片走 camo 代理，**按 URL 缓存**，内容换了但路径不变
+# 就会一直显示旧图（2026-11-11 踩过：文件已换成 2.31.0，README 上还是 2.28.2 的设置页）。
+# 所以每次发版换一张新图的路径，等于强制刷新缓存。
+VERSION = "2.31.0"
+
 # 目标宽度：GitHub README 正文约 880px，2x 屏下 2000px 已经够清晰
 TARGET_W = 2000
 
@@ -68,16 +73,17 @@ def main() -> int:
             im = im.resize((TARGET_W, h), Image.LANCZOS)
         for box in REGIONS.get(name, []):
             mosaic(im, box)
-        out = OUT_DIR / name
+        out = OUT_DIR / name.replace(".png", f"-{VERSION}.png")
         im.save(out, optimize=True)
-        print(f"[OK] {name:26} {im.size[0]}x{im.size[1]}  {out.stat().st_size // 1024} KB")
+        print(f"[OK] {out.name:30} {im.size[0]}x{im.size[1]}  {out.stat().st_size // 1024} KB")
     if missing:
         print(f"[ERR] 缺少截图: {', '.join(missing)}")
         return 1
 
-    stale = sorted(p.name for p in OUT_DIR.glob("*.png") if p.name not in FILES)
+    keep = {n.replace(".png", f"-{VERSION}.png") for n in FILES}
+    stale = sorted(p.name for p in OUT_DIR.glob("*.png") if p.name not in keep)
     if stale:
-        print(f"[WARN] docs/screenshots 里有 README 未引用的旧图: {', '.join(stale)}")
+        print(f"[WARN] docs/screenshots 里有本版未引用的图（旧版截图，可删）: {', '.join(stale)}")
     return 0
 
 

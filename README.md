@@ -9,15 +9,15 @@
 [问题反馈](https://github.com/bslnssb/antigravity-chinese-pack/issues) ·
 译文基于官方 **2.31.0**
 
-![主界面](docs/screenshots/main.png)
+![主界面](docs/screenshots/main-2.31.0.png)
 
 设置面板同样全部中文（截图取自官方 2.31.0）：
 
-![设置 · 常规设置](docs/screenshots/settings-general.png)
+![设置 · 常规设置](docs/screenshots/settings-general-2.31.0.png)
 
-![设置 · 外观设置](docs/screenshots/settings-appearance.png)
+![设置 · 外观设置](docs/screenshots/settings-appearance-2.31.0.png)
 
-![设置 · 应用设置](docs/screenshots/settings-app.png)
+![设置 · 应用设置](docs/screenshots/settings-app-2.31.0.png)
 
 ## 版本对不上？这就对了
 

@@ -9,7 +9,9 @@
     python scripts/push_via_api.py                 # 推 HEAD 到 origin/main
     python scripts/push_via_api.py --dry-run       # 只打印将要做什么
 
-限制：只处理「新增/修改」文件，不做删除；父提交必须与远端一致（不 force）。
+限制：父提交必须与远端一致（不 force）；上一次也是用本脚本推的，远端父提交 sha
+     会和本地不同（API 重建的提交没有原始时间戳），这时加 --allow-diverge，
+     以远端为父重建一个内容相同的提交。
 """
 import argparse
 import base64
@@ -64,6 +66,8 @@ def git(*args, binary=False):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--dry-run', action='store_true')
+    ap.add_argument('--allow-diverge', action='store_true',
+                    help='远端 HEAD 与本地父提交不一致时，仍以远端为父重建提交（内容一致、sha 不同）')
     a = ap.parse_args()
 
     head = git('rev-parse', 'HEAD')
@@ -78,15 +82,17 @@ def main():
     print(f'本地父提交  : {parent[:12]}')
     print(f'远端 {BRANCH:<6}: {remote_sha[:12]}')
     if remote_sha != parent:
-        raise SystemExit('远端和本地父提交不一致，先 git pull / 不要用本脚本强推')
+        if not a.allow_diverge:
+            raise SystemExit('远端和本地父提交不一致，先 git pull / 不要用本脚本强推')
+        print('  ⚠ 远端与本地父提交不同（上次是 API 重建的提交），'
+              '以远端为父新建一个内容相同的提交')
 
-    # --name-status 里只取新增与修改；删除操作没有被脚本覆盖
+    # --name-status：A/M 上传 blob，D 在 tree 里把 sha 置空即删除。
+    # 必须关掉重命名检测，否则「改名」会输出成一条 R100 old new，旧路径删不掉。
     changed = []
-    for line in git('diff', '--name-status', parent, head).splitlines():
+    for line in git('diff', '--name-status', '--no-renames', parent, head).splitlines():
         parts = line.split('\t')
         status, path = parts[0], parts[-1]
-        if status.startswith('D'):
-            raise SystemExit(f'本脚本不支持删除文件: {path}')
         changed.append((status, path))
     print(f'待推送文件  : {len(changed)} 个')
 
@@ -102,6 +108,10 @@ def main():
 
     blobs = []
     for status, path in changed:
+        if status.startswith('D'):
+            blobs.append({'path': path, 'mode': '100644', 'type': 'blob', 'sha': None})
+            print(f'  del  {path}')
+            continue
         content = git('show', f'{head}:{path}', binary=True)
         out = api('POST', '/git/blobs', {
             'content': base64.b64encode(content).decode('ascii'),
@@ -110,7 +120,7 @@ def main():
         blobs.append({'path': path, 'mode': '100644', 'type': 'blob', 'sha': out['sha']})
         print(f'  blob {path} {len(content):,} 字节')
 
-    base_tree = api('GET', f'/git/commits/{parent}')['tree']['sha']
+    base_tree = api('GET', f'/git/commits/{remote_sha}')['tree']['sha']
     tree = api('POST', '/git/trees', {'base_tree': base_tree, 'tree': blobs})
     commit = api('POST', '/git/commits', {
         'message': msg,

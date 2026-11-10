@@ -136,7 +136,7 @@ python scripts/merge_dict.py           把 tools/patches/ui-extra.json 合并进
 python tools/port/port.js --base build/app.asar.original-<ver> --out build/app.asar.zh-<ver> --ref <ver> --packdir .
 python scripts/check_docs.py           文档 ↔ 代码对表（机制被改名/删掉就报错）
 node   scripts/shot_readme.js          截主界面 + 设置面板到 build/readme_shots/（README 用图）
-python tools/redact_screenshots.py     压到 2000px 宽并落到 docs/screenshots/
+python tools/redact_screenshots.py     压到 2000px 宽、加版本号，落到 docs/screenshots/
 ```
 
 > **11-11 事故**：2.31.0 发版时只跑了 `scan_ui.js`（它只扫当前停留的那一屏）和引擎回归，
@@ -160,6 +160,12 @@ python tools/redact_screenshots.py     压到 2000px 宽并落到 docs/screensho
 > 截图前把窗口拉大没用（Electron 不吃 `Emulation` 之外的窗口尺寸），脚本用
 > `Emulation.setDeviceMetricsOverride` 把视口临时放大到 1600x1250，设置面板才能一屏放下、
 > 不被滚动条截断；1150 高度实测会切掉「语音模式」下半截。
+
+> **换图必须换文件名**：README 的图片会经 GitHub 的 camo 代理，**按 URL 缓存**。
+> 内容换了、路径没变，页面就还是旧图——2026-11-11 就栽在这里：仓库里的 png 已经是
+> 2.31.0（应用设置里写着 2.31.0），README 上显示的仍是 2.28.2 那张。
+> 所以成品图统一带版本号（`settings-app-2.31.0.png`），由 `redact_screenshots.py` 的
+> `VERSION` 决定；每次发版改这个常量，URL 一变缓存自动失效。
 
 补词只改 `tools/patches/ui-extra.json`，不动引擎源码：
 
