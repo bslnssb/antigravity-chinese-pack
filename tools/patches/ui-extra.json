@@ -1,5 +1,5 @@
 {
-  "_note": "UI 扫描发现的补充词表。exact=整串精确匹配（安全，不参与句内替换）；phrase=句内局部替换（带词边界）。由 scripts/merge_dict.py 合并进 tools/preload-engine.js。新增词条请注明来源界面。",
+  "_note": "UI 扫描发现的补充词表。exact=整串精确匹配（安全，不参与句内替换）；phrase=句内局部替换（带词边界）。由 scripts/merge_dict.py 合并进 tools/preload-engine.js。新增词条请注明来源界面。 ｜ 2026-11-10 补 2.31.0 新增界面文案 ｜ 补 Google 登录超时的系统错误说明",
   "exact": {
     "No Project": "无项目",
     "Sidebar": "侧边栏",
@@ -60,7 +60,6 @@
     "or join the": "或加入",
     "chat space": "聊天空间",
     "For help, visit": "如需帮助，请访问",
-    "Send message": "发送消息",
     "Enter bot name (optional)": "输入机器人名称（可选）",
     "Enter avatar URL (optional)": "输入头像 URL（可选）",
     "Copy path": "复制路径",
@@ -115,13 +114,30 @@
     "Updating AI Memory With File": "用文件更新 AI 记忆",
     "No conversations yet": "暂无会话",
     "New Conversation": "新建会话",
-    "Untitled": "未命名"
+    "Untitled": "未命名",
+    "Continue with different account": "使用其他账号继续",
+    "There was an unexpected issue setting up your account.": "设置账户时出现意外问题。",
+    "Actual Size": "实际大小",
+    "Select Download Folder": "选择下载文件夹",
+    "Connect a device": "连接设备",
+    "Select a device:": "选择设备：",
+    "No compatible devices found.": "未找到兼容的设备。",
+    "USB device": "USB 设备",
+    "HID device": "HID 设备",
+    "serial port": "串口",
+    "Connection info…": "连接信息…",
+    "Connection info": "连接信息",
+    "Not secure": "不安全",
+    "Connection is secure": "连接安全",
+    "Connection security information is not available for this page": "此页面暂无连接安全信息",
+    "Preparing download...": "正在准备下载…"
   },
   "phrase": {
     "Learn more.": "了解更多。",
     "Configure global allowed and denied resource permissions.": "配置全局的资源访问允许与拒绝权限。",
     "Configure link opening and built-in browser preferences.": "配置链接打开方式与内置浏览器偏好。",
     "Enable Notifications for Agent": "启用智能体通知",
-    "Enable Sounds for Agent": "启用智能体提示音"
+    "Enable Sounds for Agent": "启用智能体提示音",
+    "A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond.": "连接超时：对方在一段时间内没有正确响应，或已建立的连接因主机无响应而中断。"
   }
 }

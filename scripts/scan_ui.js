@@ -115,7 +115,11 @@ function classify(s) {
     const list = await getJson(`http://127.0.0.1:${port}/json/list`);
     const pages = list.filter((t) => t.type === 'page' && t.webSocketDebuggerUrl);
     if (!pages.length) { console.error('没有可用的页面目标'); process.exit(2); }
-    const target = pages.find((p) => !/devtools/.test(p.url)) || pages[0];
+    // 优先挑真正的 http/https 页面：客户端启动时会先开一个 data: 闪屏页和一个
+    // 空白占位页，按「第一个非 devtools」选必然扫到空窗口（可见文本 0 条）。
+    const target = pages.find((p) => /^https?:/.test(p.url))
+        || pages.find((p) => !/devtools/.test(p.url) && !/^data:/.test(p.url))
+        || pages[0];
     console.log('目标页面: ' + (target.title || target.url));
 
     const c = await connect(target.webSocketDebuggerUrl);

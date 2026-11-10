@@ -1,5 +1,5 @@
 {
-  "_说明": "port_to.py 的人工规则表。extraWords 追加到 preload 引擎的 EXACT_WORDS 精确层（官方新增文案优先补这里）；manual 是自动记忆搬不动的代码拼接片段，改动前请先跑一遍确认命中次数为 1。",
+  "_说明": "port_to.py / port.js 的人工规则表。extraWords 追加到引擎 EXACT_WORDS；manual 是自动记忆搬不动的代码拼接片段；globalPairs 是跨版本通用的新文案替换对（只在字符串字面量内、带词边界）；extraFiles 是 2.31.0 起新增、含可见文案的模块，只有真的命中替换才会写回 asar。",
   "extraWords": {
     "Welcome to Antigravity": "欢迎使用 Antigravity",
     "Continue with Google": "使用 Google 账号继续",
@@ -30,5 +30,29 @@
         "<p>Antigravity 现已全面重塑，以智能体为第一核心并赋予全新能力。如果您仍需要代码编辑器，可下载名为 <b>Antigravity IDE</b> 的独立应用。</p>"
       ]
     ]
-  }
+  },
+  "globalPairs": {
+    "Zoom In": "放大",
+    "Zoom Out": "缩小",
+    "Actual Size": "实际大小",
+    "Select Download Folder": "选择下载文件夹",
+    "Connect a device": "连接设备",
+    "Select a device:": "选择设备：",
+    "No compatible devices found.": "未找到兼容的设备。",
+    "HID device": "HID 设备",
+    "USB device": "USB 设备",
+    "serial port": "串口",
+    "Connection info…": "连接信息…",
+    "Connection is secure": "连接安全",
+    "Connection security information is not available for this page": "此页面暂无连接安全信息",
+    "Not secure": "不安全",
+    "wants to connect to a ": "想要连接一个"
+  },
+  "extraFiles": [
+    "dist/deviceChooser.js",
+    "dist/webviewPopupSecurity.js",
+    "dist/guestFileChooserController.js",
+    "dist/guestPromptController.js",
+    "dist/webviewDownloadRouting.js"
+  ]
 }

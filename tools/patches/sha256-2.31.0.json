@@ -1,0 +1,7 @@
+{
+  "version": "2.31.0",
+  "asar": "app.asar.zh-2.31.0",
+  "asar_size": 5609205,
+  "asar_sha256": "74acd05cfc88638e268667de9726d9fb944bd020f5adf6b84c82df3d3e83afed",
+  "note": "由 scripts/package_dist.py 生成；改了汉化成品就要重新打包"
+}

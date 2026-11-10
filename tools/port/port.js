@@ -328,6 +328,10 @@ function main() {
     const mem = JSON.parse(fs.readFileSync(memPath, 'utf8'));
     const engine = fs.readFileSync(engPath, 'utf8');
     const rules = fs.existsSync(rulesPath) ? JSON.parse(fs.readFileSync(rulesPath, 'utf8')) : {};
+    // 跨版本通用的补词：只落在字符串字面量内，且带词边界，不会碰代码标识符。
+    // 旧包用它也能翻到新版才出现的文案（记忆文件是按版本冻结的，规则表不是）。
+    const globalPairs = rules.globalPairs || {};
+    const pairKeys = Object.keys(globalPairs).sort((a, b) => b.length - a.length);
 
     log(`base   : ${base}`);
     log(`out    : ${out}`);
@@ -374,6 +378,13 @@ function main() {
             applied += count;
         }
 
+        // 2.31.0 起官方新增的菜单 / 对话框文案，用规则表跨版本补齐
+        for (const oldStr of pairKeys) {
+            const res = replaceInStrings(src, oldStr, globalPairs[oldStr]);
+            src = res[0];
+            if (res[1]) applied += res[1];
+        }
+
         const pairs = (mem.files && mem.files[inner]) || {};
         const keys = Object.keys(pairs).sort((a, b) => b.length - a.length);
         let missed = 0;
@@ -399,6 +410,40 @@ function main() {
         totalApplied += applied;
         totalMissed += missed;
         log(`  ${inner.padEnd(34)} mem ${String(keys.length).padStart(2)} | applied ${applied} | missed ${missed}`);
+    }
+
+    // ---- 新版才出现的模块（2.31.0 一口气加了 27 个文件，含可见文案的那几个） ----
+    // 只在真的命中补词时才写回：没改过的文件若也塞进 swap，末尾的
+    // 「diff 数 == swap 数」自检会把它当成漏改而报错。
+    for (const inner of (rules.extraFiles || [])) {
+        if (Object.prototype.hasOwnProperty.call(SIX, inner)) continue;
+        let src;
+        try {
+            src = extract(parsed, inner).toString('utf8');
+        } catch (e) {
+            log(`  extra ${inner}: 底座里没有这个文件，跳过`);
+            continue;
+        }
+        const before = src;
+        let applied = 0;
+        for (const oldStr of pairKeys) {
+            const res = replaceInStrings(src, oldStr, globalPairs[oldStr]);
+            src = res[0];
+            if (res[1]) applied += res[1];
+        }
+        if (src === before) {
+            log(`  extra ${inner.padEnd(28)} 无命中，跳过`);
+            continue;
+        }
+        const bad = codeCjk(src);
+        if (bad.length) {
+            badTotal += bad.length;
+            log(`  !! POLLUTION extra ${inner}: ${bad.length} at ${JSON.stringify(bad.slice(0, 5))}`);
+            continue;
+        }
+        swap[inner] = Buffer.from(src, 'utf8');
+        totalApplied += applied;
+        log(`  extra ${inner.padEnd(28)} applied ${applied}`);
     }
 
     if (badTotal > 0) {

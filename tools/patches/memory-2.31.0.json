@@ -1,0 +1,48 @@
+{
+"refVersion": "2.31.0",
+"files": {
+"dist/main.js": {
+"distro": "发行版",
+"Binary not found": "未找到可执行文件",
+"instead.": "上打开。",
+"distro not found": "发行版",
+"is no longer installed.": "已不再安装。",
+"opened on": "已改为直接在",
+"setup failed": "设置失败",
+"Startup failed": "启动失败",
+"New Window": "新建窗口",
+"No agents running": "没有正在运行的智能体",
+"Open": "打开",
+"Quit": "退出",
+"Cancel": "取消",
+"Confirm Quit": "确认退出",
+"Are you sure you want to quit?": "您确定要退出吗？",
+"There may be agents or background tasks running.": "当前可能有正在运行的智能体或后台任务。"
+},
+"dist/menu.js": {
+"New Window": "新建窗口",
+"Docs": "官方文档",
+"Connect to": "连接到",
+"Reopen Locally": "在本地重新打开"
+},
+"dist/tray.js": {
+"agent": "个智能体",
+" running": "正在运行"
+},
+"dist/ideInstall/wizardHtml.js": {
+"Welcome to": "欢迎使用",
+"Setting up": "正在配置",
+"Welcome to the new": "欢迎体验全新的",
+"has been redesigned to put agents first with new capabilities. If you'd still like a code editor, you can download it as a separate app named": "现已全面重塑，以智能体为第一核心并赋予全新能力。如果您仍需要代码编辑器，可下载名为",
+"Download the": "下载",
+"Explore the new": "开始探索全新"
+},
+"dist/ipcHandlers.js": {
+"Cannot open folder": "无法打开文件夹",
+"Folder is on the": "文件夹位于",
+"filesystem": "文件系统上",
+"Open workspace": "打开工作区",
+"Open workspaces": "打开工作区"
+}
+}
+}

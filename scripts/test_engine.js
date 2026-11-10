@@ -46,6 +46,11 @@ const CASES = [
     ['New Tab', '新建标签页'],
     ['Move Conversation Up', '上移会话'],
     ['Search shortcuts...', '搜索快捷键...'],
+    // 2.31.0 登录引导页 / Google OAuth 失败页：网络不通时用户看到的就是这一屏，
+    // 必须保证它是中文，否则会以为「汉化又坏了」。
+    ['There was an unexpected issue setting up your account.', '设置账户时出现意外问题。'],
+    ['Continue with different account', '使用其他账号继续'],
+    ['Having trouble signing in?', '登录遇到问题？'],
     // 半中半英兜底：这些是远端下发、本地查不到原文的长句
     ['Configure global allowed and denied resource permissions. Learn more.', '配置全局的资源访问允许与拒绝权限。 了解更多。'],
     ['Configure link opening and built-in browser preferences.', '配置链接打开方式与内置浏览器偏好。'],
