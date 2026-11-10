@@ -10,7 +10,7 @@ const path = require('path');
 const http = require('http');
 
 const portFile = path.join(process.env.APPDATA, 'Antigravity', 'DevToolsActivePort');
-const port = parseInt(fs.readFileSync(portFile, 'utf8').trim().split(/\r?\n/)[0], 10);
+let port = parseInt(fs.readFileSync(portFile, 'utf8').trim().split(/\r?\n/)[0], 10);
 
 const outDir = process.argv[2] || path.join(__dirname, '..', 'build', 'shots');
 const panels = process.argv.slice(3);
@@ -88,6 +88,20 @@ const clickExpr = (label) => `(() => {
 })()`;
 
 (async () => {
+    // 端口自愈：动态端口重启后 DevToolsActivePort 常停留在旧值（实测会 ECONNREFUSED）
+    const probe = (p) => new Promise((res) => {
+        const req = http.get(`http://127.0.0.1:${p}/json/version`, (r) => { r.resume(); res(r.statusCode === 200); });
+        req.on('error', () => res(false));
+        req.setTimeout(800, () => { req.destroy(); res(false); });
+    });
+    if (!(await probe(port))) {
+        const cands = [];
+        for (let d = 1; d <= 40; d++) cands.push(port + d);
+        for (let p = 10989; p <= 11020; p++) cands.push(p);
+        for (const p of cands) {
+            if (await probe(p)) { console.log(`端口 ${p} 可达（文件值已失效，自动探测）`); port = p; break; }
+        }
+    }
     const list = await getJson(`http://127.0.0.1:${port}/json/list`);
     const pages = list.filter((t) => t.type === 'page' && t.webSocketDebuggerUrl && !/devtools/.test(t.url));
     const target = pages.find((p) => p.title === 'Antigravity') || pages[0];

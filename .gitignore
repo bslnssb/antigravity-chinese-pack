@@ -48,4 +48,8 @@ build/_backup/
 # 2.27 是自动更新踩坑时的中间版本，成品已由 2.28.2 取代
 build/work-2.27/
 build/work-2.28.2/tmp/
+# port_to.py 抽出来的官方/汉化对照副本（体积大、可随时重生成）
+build/work-2.29.0/
+build/work-2.30.0/
+build/work-2.31.0/
 build/shots/

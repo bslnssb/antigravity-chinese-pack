@@ -76,6 +76,33 @@ const CASES = [
     // 反向保护：不能把含 Workspace 的长句啃坏
     ['Use Workspace Settings', '使用工作区设置'],
     ['Also includes global settings when working', '在当前项目中工作时，同时继承并应用全局设置'],
+    // 2026-11-11 设置面板全量审计补的词条（scripts/audit_settings.js 取证）
+    ['Interface Layout', '界面布局'],
+    ['Knowledge Work', '知识工作'],
+    ['Software Engineering', '软件工程'],
+    ['Simplified interface for research, writing, and everyday tasks.', '面向研究、写作与日常任务的精简界面。'],
+    ['Voice mode', '语音模式'],
+    ['The voice used in Voice mode. Powered by Gemini Live.', '语音模式使用的声音，由 Gemini Live 提供支持。'],
+    ['Not set', '未设置'],
+    ['System default', '系统默认'],
+    ['Conversation Steps', '对话步骤'],
+    ['Choose how much detail is shown during a conversation.', '选择对话过程中展示的详细程度。'],
+    ['Font Size', '字号'],
+    ['Screen Reader Mode', '屏幕阅读器模式'],
+    ['Download Location', '下载位置'],
+    ['Browsing History', '浏览历史'],
+    ['Previous Side Panel Tab', '上一个侧边面板标签'],
+    ['Mute Voice Speaker', '扬声器静音'],
+    ['Toggle Maximize Side Panel', '切换最大化侧边面板'],
+    ['Developer-only tools. These settings do not affect other users.', '仅限开发者使用的工具，这些设置不会影响其他用户。'],
+    ['Ask anything, @ to mention, / for actions', '随便问点什么，@ 提及，/ 执行操作'],
+    // 插值句式：快捷键 aria-label / 反馈页脚
+    ['Remove shortcut Ctrl+K for Settings', '移除「设置」的快捷键 Ctrl+K'],
+    ['Add shortcut for New Conversation', '为「新建会话」添加快捷键'],
+    ['Send feedback as someone@example.com', '以 someone@example.com 身份发送反馈'],
+    // 首页问候语（用户名插值）
+    ['Hey com, what should we build today?', '嗨 com，今天想构建点什么？'],
+    ['Welcome back, com. Where should we pick up?', '欢迎回来，com。想从哪里继续？'],
 ];
 
 // M6：总开关。第一项是开关状态：on = 正常翻译，off = 整段原样返回（连前后空格都不动）
@@ -102,11 +129,13 @@ const WRITE_CASES = [
 ];
 
 // M6：用户内容区不翻。第一项是命中容器（选择器 / <editable> / class），第二项是是否应跳过
+// 2026-11-11 修正：composer 容器不再整块跳过——底部工具条上的项目/模型/权限选择器是 UI 控件，
+// 真实用户输入由 <editable> 与 TEXTAREA/INPUT 挡住。旧断言（期望 composer 跳过）已反转为期望翻译。
 const EXCLUDE_CASES = [
-    ['.surface-composer', true],
-    ['.surface-composer-card', true],
-    ['.no-focus-agent-input', true],
-    ['[data-testid="agent-input-box"]', true],
+    ['.surface-composer', false],
+    ['.surface-composer-card', false],
+    ['.no-focus-agent-input', false],
+    ['[data-testid="agent-input-box"]', false],
     ['[data-testid="voice-dock-input"]', true],
     ['[data-testid="conversation-view"]', true],
     ['[data-testid="user-message-bubble"]', true],
@@ -196,6 +225,17 @@ for (const [mark, wantSkip] of EXCLUDE_CASES) {
     const node = { nodeType: 3, parentElement: el };
     const skipped = ENG.isExcluded(node) === true;
     report(skipped === wantSkip, `${JSON.stringify(mark)} -> ${skipped ? '跳过' : '翻译'}${skipped === wantSkip ? '' : `  期望${wantSkip ? '跳过' : '翻译'}`}`);
+}
+
+// 输入区容器上的 aria-label：内容不翻，但属性文案要翻
+{
+    const el = fakeEl({ editable: true });
+    const node = {
+        nodeType: 1, tagName: 'DIV', isContentEditable: true,
+        classList: el.classList, closest: el.closest, parentElement: null,
+    };
+    report(ENG.isExcluded(node) === true, '输入区自身 -> 内容跳过');
+    report(ENG.isExcluded(node, { ignoreEditable: true }) === false, '输入区自身(ignoreEditable) -> 允许翻 aria-label');
 }
 
 console.log(`\n${total - fail}/${total} 通过`);

@@ -102,7 +102,9 @@ def write_release_body(ver: str, out: Path, out_size: int, out_sha: str,
         if PLACEHOLDER not in old and out.name in old:
             for name, size, sha in ((out.name, out_size, out_sha),
                                     (f"app.asar.zh-{ver}", asar_size, asar_sha)):
-                pat = re.compile(r"(\|\s*`" + re.escape(name) + r"`\s*\|\s*)\d+(\s*字节\s*\|\s*)`[0-9a-f]{64}`")
+                # 名字后面可能带备注（如 `app.asar.zh-x`（包内汉化文件）），
+                # 所以不能要求名字后立刻是竖线，否则 asar 那行的数字永远刷不到
+                pat = re.compile(r"(\|\s*`" + re.escape(name) + r"`[^|\n]*\|\s*)\d+(\s*字节\s*\|\s*)`[0-9a-f]{64}`")
                 old = pat.sub(lambda m: f"{m.group(1)}{size}{m.group(2)}`{sha}`", old)
             dest.write_text(old, encoding="utf-8", newline="\n")
             print("正文草稿：保留已写的「本版变化」，只刷新校验数字")

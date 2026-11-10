@@ -7,8 +7,11 @@ const path = require('path');
 const http = require('http');
 
 const portFile = path.join(process.env.APPDATA, 'Antigravity', 'DevToolsActivePort');
-if (!fs.existsSync(portFile)) { console.error('DevToolsActivePort 不存在'); process.exit(2); }
-const port = parseInt(fs.readFileSync(portFile, 'utf8').trim().split(/\r?\n/)[0], 10);
+const portArg = (process.argv.find((a) => a.startsWith('--port=')) || '').slice('--port='.length);
+// 端口文件在「动态端口 + 自动重载」后会停留在启动时的旧值，实测扫描直接连会 ECONNREFUSED。
+// 允许 --port= 显式指定；未指定时若文件里的端口连不上，就在附近端口段里探一遍。
+let port = portArg ? parseInt(portArg, 10) : (fs.existsSync(portFile) ? parseInt(fs.readFileSync(portFile, 'utf8').trim().split(/\r?\n/)[0], 10) : 0);
+if (!port) { console.error('DevToolsActivePort 不存在且未指定 --port'); process.exit(2); }
 
 function getJson(url) {
     return new Promise((resolve, reject) => {
@@ -112,6 +115,20 @@ function classify(s) {
 }
 
 (async () => {
+    // 端口自愈：文件里的端口常常已经失效（Auto-Restart 换了端口），探一遍邻近端口段。
+    const probe = (p) => new Promise((res) => {
+        const req = http.get(`http://127.0.0.1:${p}/json/version`, (r) => { r.resume(); res(r.statusCode === 200); });
+        req.on('error', () => res(false));
+        req.setTimeout(800, () => { req.destroy(); res(false); });
+    });
+    if (!(await probe(port))) {
+        const cands = [];
+        for (let d = 1; d <= 30; d++) cands.push(port + d);
+        for (let p = 10989; p <= 11020; p++) cands.push(p);
+        for (const p of cands) {
+            if (await probe(p)) { port = p; console.log(`端口 ${port} 可达（文件值已失效，已自动探测）`); break; }
+        }
+    }
     const list = await getJson(`http://127.0.0.1:${port}/json/list`);
     const pages = list.filter((t) => t.type === 'page' && t.webSocketDebuggerUrl);
     if (!pages.length) { console.error('没有可用的页面目标'); process.exit(2); }

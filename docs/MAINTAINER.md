@@ -126,16 +126,26 @@ flowchart TD
 变成 `Built-in 浏览器设置`，`Legal Help` 变成 `Legal 帮助`。英语短词是长词的前缀，
 替换时一旦不看词边界就会啃掉别人。
 
-改完必跑的五道检查：
+改完必跑的六道检查：
 
 ```
-node   scripts/scan_ui.js              连运行中客户端的 CDP，列出未翻译 / 半中半英
-node   scripts/test_engine.js          引擎回归（67 个用例，钉死这类事故 + 开关/排除区 + 登录失败页文案）
+node   scripts/audit_settings.js       逐页打开设置面板，列仍未翻译/半中半英的条目（发版前必跑）
+node   scripts/scan_ui.js              连运行中客户端的 CDP，列出当前界面的未翻译 / 半中半英
+node   scripts/test_engine.js          引擎回归（91 个用例，钉死这类事故 + 开关/排除区 + 登录失败页文案）
 python scripts/merge_dict.py           把 tools/patches/ui-extra.json 合并进引擎
-python scripts/rebuild_preload.py      只替换 asar 里的 preload，秒级重打包
+python tools/port/port.js --base build/app.asar.original-<ver> --out build/app.asar.zh-<ver> --ref <ver> --packdir .
 python scripts/check_docs.py           文档 ↔ 代码对表（机制被改名/删掉就报错）
 node   scripts/shot_settings.js        截设置面板若干页到 build/shots/，供 README 用
 ```
+
+> **11-11 事故**：2.31.0 发版时只跑了 `scan_ui.js`（它只扫当前停留的那一屏）和引擎回归，
+> 就宣称「汉化好了」。实际设置面板 2.31.0 改版后有一整批文案没进词典——界面布局、
+> 语音模式、对话步骤、代码预览、无障碍、下载位置、浏览历史……用户点进去满屏英文。
+> 教训：**首页中文 ≠ 全站中文**。设置面板是文案最密集、也最容易随版本变化的地方，
+> 必须用 `audit_settings.js` 逐页翻过一遍，并且把结果和上一版对比条数，而不是只看截图。
+> 同时 `EXCLUDE_SELECTOR` 当时把整个输入卡片（`.surface-composer` / `agent-input-box`）
+> 当成「用户内容」排除，连带把工具条上的项目/模型/权限/语音按钮也挡了——排除粒度要落在
+> **输入区**（`isContentEditable`）而不是**容器**。
 
 `check_docs.py` 是**防"文档还说成立"**的那一道：它把文档里的承诺逐条到代码里找证据——
 启动器的 `RevertPort` 回滚、`zh-port-skip` 熔断、自愈的 7 个退出码、`.zh-pack` 标记、
@@ -162,7 +172,10 @@ node   scripts/shot_settings.js        截设置面板若干页到 build/shots/�
 短语替换跑在前面，会把 `Also includes global settings when working` 那种完整句
 提前啃成「此外还包含 global settings …」。只能在引擎 1.4 区按「整节点恰好相等」锚定。
 
-扫描脚本读 `%APPDATA%\Antigravity\DevToolsActivePort` 拿实时端口，端口每次启动都变。
+扫描脚本读 `%APPDATA%\Antigravity\DevToolsActivePort` 拿实时端口，端口每次启动都变；
+而且客户端「动态端口 + 自动重载」之后，这个文件常停留在启动时的旧值（实测连上去
+`ECONNREFUSED`）。现在 `scan_ui.js` / `audit_settings.js` / `shot_settings.js` 都会在
+文件端口不通时自动在邻近端口段里探一遍，也支持 `--port=` 显式指定。
 写自动化时注意：启动客户端和扫描必须在**同一条命令**内跑完，否则进程会被清理，
 表现为 `ECONNREFUSED`（不是包的问题）。
 
