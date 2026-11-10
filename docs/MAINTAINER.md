@@ -73,15 +73,29 @@ flowchart TD
 
 ### 2.1 代理：探到才设，探不到就不动
 
-启动器不写死任何端口（早期版本写死了作者本机的 Clash 端口，别人换端口就永远走错门，
-探不到还会弹框）。现在 `DetectProxy()` 按顺序试三个来源，**探到才**给客户端加
-`--proxy-server` 并设 `HTTP_PROXY/HTTPS_PROXY/ALL_PROXY`（大小写各一组）+ 清空 `NO_PROXY`：
+启动器不写死任何端口（早期版本写死了作者本机的 Clash 端口，别人换端口就永远走错门）。
+`tools/detect-proxy.ps1` 按顺序试三个来源，**探到才**给客户端加 `--proxy-server`，
+并设 `HTTP_PROXY/HTTPS_PROXY/ALL_PROXY`（大小写各一组），`NO_PROXY` 设成回环与局域网：
 
 | 顺序 | 来源 | 说明 |
 |---|---|---|
-| 1 | `tools\local-proxy.txt` | 本机专用，一行 `[host:]port`。**不进 git、不进 zip**（`.gitignore` 已排除） |
-| 2 | Windows 系统代理 | 只在 `HKCU\...\Internet Settings` 的 `ProxyEnable=1` 时采信 `ProxyServer` |
-| 3 | `tools/detect-proxy.ps1` | 一次 PowerShell 扫 7897/7890/7891/10808/10809/1080/8080/2080/8888，打印第一个在监听的 |
+| 1 | `tools\local-proxy.txt` | 本机专用，一行 `[host:]port`（可以是别的机器）。**不进 git、不进 zip**（`.gitignore` 已排除） |
+| 2 | Windows 系统代理 | 只在 `HKCU\...\Internet Settings` 的 `ProxyEnable=1` 时采信 `ProxyServer`，支持 `http=h:p;https=h:p` 写法 |
+| 3 | `tools/detect-proxy.ps1` | 扫 7897/7890/7891/10808/10809/1080/8080/2080/8888，逐个做**协议探测** |
+
+**只测「端口有没有人监听」是不够的**：8080 上的开发服务器、8888 上的 Jupyter 都是活端口，
+被当成代理塞给客户端后，所有请求都发到一个不会转发的地方，比不设代理更糟。所以每个
+候选都要先握手确认身份：发 `CONNECT` 看回的是 `200/403/407/502`（是代理）还是
+`400/404/405/501`（普通 web 服务）；再发 SOCKS5 握手看回不回 `0x05`。认出 SOCKS5
+就用 `socks5://`，不硬当 HTTP 代理用（v2rayN 的 10808 只讲 SOCKS，当 HTTP 用必失败）。
+
+**扫描来的只是猜测**：HTTP 候选还要能连到 `accounts.google.com` 才采信，连不上就跳下一个；
+一个都不行就**不设代理**。`local-proxy.txt` 与系统代理属于用户的明确意图，探到就用，
+连不上只在日志里提醒，不会因为一次超时就改主意。
+
+`detect-proxy.ps1 -Detailed` 输出 `SOURCE=` / `CANDIDATES=` 给 `launch.ps1`；
+不带参数时仍只打印一个端口号，兼容旧的 VBS 启动器；`-IgnoreHint` / `-IgnoreSystem`
+只给自检用（跳过前两个来源，专门验证端口扫描）。
 
 **探不到就一个网络设置都不动**：不设环境变量、不加 `--proxy-server`、不弹框，
 只在 `%TEMP%\antigravity-launch.log` 写一行 `proxy = none`。

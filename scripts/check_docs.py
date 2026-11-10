@@ -233,9 +233,11 @@ def _payloads():
     return bad
 
 
-@check("代理：启动器不写死端口，文档说的是「探到才设」")
+@check("代理：不写死端口，扫描结果必须验协议、验连通才采信")
 def _proxy():
     src, doc = read(VBS_SRC), read(MAINTAINER)
+    launch = read(ROOT / "tools" / "launch.ps1")
+    detect = read(ROOT / "tools" / "detect-proxy.ps1")
     bad = []
     if re.search(r"Const\s+PROXY(?:_HOST|_PORT)?\s*=", src):
         bad.append("启动器里又有写死的代理常量了（别人的端口会对不上）")
@@ -247,6 +249,19 @@ def _proxy():
         bad.append("缺 tools/detect-proxy.ps1")
     if "探到才" not in doc:
         bad.append("MAINTAINER 没写「探到才设代理」")
+
+    # 下面几条是 2026-11-11 补的：只测端口有没有人监听，会把 8080 上的开发服务器
+    # 当成代理塞给客户端，比不设代理更糟。
+    if "-Detailed" not in launch:
+        bad.append("launch.ps1 没向 detect-proxy.ps1 要 -Detailed，拿不到来源信息")
+    if "'scan'" not in launch:
+        bad.append("launch.ps1 没区分扫描来的候选，「猜测」会被直接当成代理用")
+    if "local-proxy.txt" not in detect:
+        bad.append("detect-proxy.ps1 不读 local-proxy.txt（端口不常见的用户无处可写）")
+    if "CONNECT " not in detect:
+        bad.append("detect-proxy.ps1 不做 HTTP 协议探测，开发服务器会被误判成代理")
+    if "0x05" not in detect:
+        bad.append("detect-proxy.ps1 不做 SOCKS5 探测，只讲 SOCKS 的端口会被当 HTTP 代理用")
     return bad
 
 
